@@ -7,6 +7,9 @@
                 "kind": "Http",
                 "inputs": {
                     "statusCode": 200,
+                    "headers": {
+                        "test-version": "1"
+                    },
                     "body": "@body('Call_VID')"
                 },
                 "runAfter": {
@@ -66,7 +69,7 @@
                     "uri": "https://verifiedid.did.msidentity.com/v1.0/verifiableCredentials/createPresentationRequest",
                     "method": "POST",
                     "body": {
-                        "authority": "did:web:did.woodgrove-onboarding.com",
+                        "authority": "@{parameters('DidAuthority')}",
                         "includeQRCode": false,
                         "registration": {
                             "clientName": "Woodgrove helpdesk",
@@ -76,7 +79,7 @@
                             "url": "https://woodgrove.com/api/verifier/presentationcallback",
                             "state": "23377504-74c1-4a95-913d-86e865f71ac1",
                             "headers": {
-                                "api-key": "<API key to help protect your callback API>"
+                                "api-key": "@{parameters('ApiKey')}"
                             }
                         },
                         "includeReceipt": false,
@@ -84,7 +87,7 @@
                             {
                                 "type": "VerifiedEmployee",
                                 "acceptedIssuers": [
-                                    "did:web:did.woodgrove-onboarding.com"
+                                    "@{parameters('DidAuthority')}"
                                 ],
                                 "configuration": {
                                     "validation": {
