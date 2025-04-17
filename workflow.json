@@ -8,7 +8,8 @@
                 "inputs": {
                     "statusCode": 200,
                     "headers": {
-                        "test-version": "1"
+                        "test-version": "2",
+                        "test value": "@{triggerBody()?['upn']}"
                     },
                     "body": "@body('Call_VID')"
                 },
@@ -77,7 +78,7 @@
                         },
                         "callback": {
                             "url": "https://woodgrove.com/api/verifier/presentationcallback",
-                            "state": "23377504-74c1-4a95-913d-86e865f71ac1",
+                            "state": "@{triggerBody()?['upn']}",
                             "headers": {
                                 "api-key": "@{parameters('ApiKey')}"
                             }
@@ -99,7 +100,7 @@
                                     {
                                         "claimName": "revocationId",
                                         "values": [
-                                            "10@sample.com"
+                                            "@{triggerBody()?['upn']}"
                                         ]
                                     }
                                 ]
