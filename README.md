@@ -8,7 +8,7 @@ The diagram below outlines the components and the flow of a presentation request
 
 The verifier endpoint initiates a presentation request when helpdesk staff ask an employee to verify their identity.
 
-- **Step 1.** To initiate the verification process, a helpdesk personnel enters the user's UPN and phone number (to which the notification will be sent). A JavaScript code then calls the [Verifier endpoint](./Controllers/VerifierController.cs). Use the following JSON payload to call the verifier endpoint from the frontend app:
+- **Step 1.** To initiate the verification process, a helpdesk personnel enters the user's UPN and phone number (to which the notification will be sent). A JavaScript code then calls the [verifier endpoint](./Azure-Logic-app/Presentation/workflow.json). Use the following JSON payload to call the verifier endpoint from the frontend app:
     
     ```json
     {
@@ -93,7 +93,7 @@ The verifier endpoint initiates a presentation request when helpdesk staff ask a
 
 ## Callback endpoint
 
-- **Step 5.** The callback endpoint is called (by Microsoft Entra verifeid ID service) when a user scans the QR code, uses the deep link to the Authenticator app, or finishes the presentation process. The payload contains information like the `state` value that you passed in the original payload (we use it as a key for Azure Blob table), `requestStatus`, `claims` and more. 
+- **Step 5.** The [callback endpoint](./Azure-Logic-app/Callback/workflow.json) is called (by Microsoft Entra verifeid ID service) when a user scans the QR code, uses the deep link to the Authenticator app, or finishes the presentation process. The payload contains information like the `state` value that you passed in the original payload (we use it as a key for Azure Blob table), `requestStatus`, `claims` and more. 
 
 
 - **Step 6.** The callback endpoint executes the logic"
@@ -148,7 +148,7 @@ The following JSON shows an example of **presentation_verified** status to the c
     
 ## Status endpoint
 
-The frontend application queries the "status" endpoint every three seconds to obtain the latest updates regarding user activity using the user's principal name. The endpoint retrieves the status data from the Azure Blob table and return it to the application. Consequently, the application updates the user interface in accordance with this information. When the status is `presentation_verified`, the application should stop the three-second interval.
+The frontend application queries the [status endpoint](./Azure-Logic-app/Status/workflow.json) every three seconds to obtain the latest updates regarding user activity using the user's principal name. The endpoint retrieves the status data from the Azure Blob table and return it to the application. Consequently, the application updates the user interface in accordance with this information. When the status is `presentation_verified`, the application should stop the three-second interval.
 
 The JSON below illustrates the payload required to call the status endpoint:
 
@@ -172,6 +172,8 @@ The response is similar to the one returned verifier endpoint
 
 ## Parameters
 
+The [parameters](./Azure-Logic-app/parameters.json) necessary for the workflows
+
 - **ApiKey** a secret used by the API
 - **CallbackUrl** - This is your Logic App callback workflow. The URL must be simple for Entra ID to call it. We use Azure API management service with URL [rewrite to remove extra query string parameters](./Azure-API-Management/APIM-policy.xml) and simplify the URL.
 
@@ -183,4 +185,4 @@ The response is similar to the one returned verifier endpoint
 
 ## API Connections
 
-The `azuretables` API Connections enable the reading and writing of entities within the Azure Blob table. 
+The `azuretables` [API Connections](./Azure-Logic-app/connections.json) enable the reading and writing of entities within the Azure Blob table. 
