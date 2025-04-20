@@ -13,7 +13,7 @@
                     "body": "@body('Get_entity_(V2)')"
                 },
                 "runAfter": {
-                    "Get_entity_(V2)": [
+                    "Send_email": [
                         "SUCCEEDED"
                     ]
                 }
@@ -182,6 +182,41 @@
                 },
                 "runAfter": {
                     "Insert_or_Merge_Entity_(V2)": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Send_email": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "referenceName": "acsemail"
+                        }
+                    },
+                    "method": "post",
+                    "body": {
+                        "senderAddress": "DoNotReply@woodgrovedemo.com",
+                        "recipients": {
+                            "to": [
+                                {
+                                    "address": "yoelhor@live.com"
+                                }
+                            ]
+                        },
+                        "content": {
+                            "subject": "Action Required: Verify your identity",
+                            "html": "<p class=\"editor-paragraph\">Action Required: Please verify your identity using the following URL</p><p class=\"editor-paragraph\"><br>@{body('Parse_VID_response_JSON')?['url']}</p><br><p class=\"editor-paragraph\"><a href=\"@{body('Parse_VID_response_JSON')?['url']}\" class=\"editor-link\">Verify</a></p>"
+                        },
+                        "importance": "Normal"
+                    },
+                    "path": "/emails:sendGAVersion",
+                    "queries": {
+                        "api-version": "2023-03-31"
+                    }
+                },
+                "runAfter": {
+                    "Get_entity_(V2)": [
                         "SUCCEEDED"
                     ]
                 }
