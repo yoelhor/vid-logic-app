@@ -154,7 +154,7 @@ The JSON below illustrates the payload required to call the status endpoint:
 
 ```json
 {
-    "state": "10@sample.com""
+    "state": "10@sample.com"
 }
 ```
 
