@@ -1,0 +1,30 @@
+{
+  "ApiKey": {
+    "type": "String",
+    "value": ""
+  },
+  "CallbackUrl": {
+    "type": "String",
+    "value": "https://woodgroove.azure-api.net/callback"
+  },
+  "ClientId": {
+    "type": "String",
+    "value": ""
+  },
+  "ClientSecret": {
+    "type": "String",
+    "value": ""
+  },
+  "DidAuthority": {
+    "type": "String",
+    "value": ""
+  },
+  "Scope": {
+    "type": "String",
+    "value": "3db474b9-6a0c-4840-96ac-1fceb342124f/.default"
+  },
+  "TenantId": {
+    "type": "String",
+    "value": ""
+  }
+}

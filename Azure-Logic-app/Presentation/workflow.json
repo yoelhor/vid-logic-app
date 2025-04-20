@@ -8,13 +8,12 @@
                 "inputs": {
                     "statusCode": 200,
                     "headers": {
-                        "test-version": "2",
-                        "test value": "@{triggerBody()?['upn']}"
+                        "test-version": "2"
                     },
-                    "body": "@body('Call_VID')"
+                    "body": "@body('Get_entity_(V2)')"
                 },
                 "runAfter": {
-                    "Call_VID": [
+                    "Get_entity_(V2)": [
                         "SUCCEEDED"
                     ]
                 }
@@ -77,7 +76,7 @@
                             "purpose": "Prove your identity"
                         },
                         "callback": {
-                            "url": "https://woodgrove.com/api/verifier/presentationcallback",
+                            "url": "@{parameters('CallbackUrl')}",
                             "state": "@{triggerBody()?['upn']}",
                             "headers": {
                                 "api-key": "@{parameters('ApiKey')}"
@@ -122,12 +121,76 @@
                         "transferMode": "Chunked"
                     }
                 }
+            },
+            "Insert_or_Merge_Entity_(V2)": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "referenceName": "azuretables"
+                        }
+                    },
+                    "method": "patch",
+                    "body": {
+                        "status": "request_created",
+                        "message": "Waiting for the user to open the notification.",
+                        "url": "@{body('Parse_VID_response_JSON')?['url']}"
+                    },
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/tables/@{encodeURIComponent('State')}/entities(PartitionKey='@{encodeURIComponent('State')}',RowKey='@{encodeURIComponent(triggerBody()?['upn'])}')"
+                },
+                "runAfter": {
+                    "Parse_VID_response_JSON": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Parse_VID_response_JSON": {
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@body('Call_VID')",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "requestId": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            },
+                            "expiry": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Call_VID": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Get_entity_(V2)": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "referenceName": "azuretables"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/tables/@{encodeURIComponent('State')}/entities(PartitionKey='@{encodeURIComponent('State')}',RowKey='@{encodeURIComponent(triggerBody()?['upn'])}')"
+                },
+                "runAfter": {
+                    "Insert_or_Merge_Entity_(V2)": [
+                        "SUCCEEDED"
+                    ]
+                }
             }
         },
         "contentVersion": "1.0.0.0",
         "outputs": {},
         "triggers": {
-            "Presentation_HTTP_endpoint_start": {
+            "HTTP_endpoint": {
                 "type": "Request",
                 "kind": "Http",
                 "inputs": {

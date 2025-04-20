@@ -1,0 +1,17 @@
+{
+  "managedApiConnections": {
+      "azuretables": {
+          "api": {
+              "id": "/subscriptions/f96cc050-de1c-45d7-beb7-3bcc845d4735/providers/Microsoft.Web/locations/eastus/managedApis/azuretables"
+          },
+          "authentication": {
+              "type": "ManagedServiceIdentity"
+          },
+          "connection": {
+              "id": "/subscriptions/f96cc050-de1c-45d7-beb7-3bcc845d4735/resourceGroups/Woodgrove-demos-for-EEID/providers/Microsoft.Web/connections/azuretables"
+          },
+          "connectionRuntimeUrl": "https://e4479395d048a0d5.03.common.logic-eastus.azure-apihub.net/apim/azuretables/1a466ed1a1b8467996eecb67152109c4"
+      }
+  },
+  "serviceProviderConnections": {}
+}
