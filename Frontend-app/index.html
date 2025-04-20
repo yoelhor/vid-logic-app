@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helpdesk</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.4/dist/css/bootstrap.min.css"
+        integrity="sha384-DQvkBjpPgn7RC31MCQoOeC9TI2kdqa4+BSgNMNj8v77fdC77Kj5zpWFTJaaAoMbC" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="display-4">Welcome</h1>
+
+        <div class="row" style="padding-top: 15px;">
+            <div class="col-auto" style="padding-bottom: 7px;">
+                Please provide employee information to verify their identity:
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md">
+                <div class="form-floating">
+                    <input type="upn" class="form-control" id="upn" name="upn" required placeholder="10@example.com">
+                    <label for="upn">User principal name (UPN)</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" style="padding-top: 15px;">
+            <div class="col-md">
+                <div class="form-floating">
+                    <input type="text" class="form-control" id="phone" name="phone" placeholder="+1 555-555-5555"
+                        required>
+                    <label for="name">Phone number or email</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="row" style="padding-top: 15px;">
+            <div class="col-auto">
+                <button type="button" id="sendButton" class="btn btn-primary" style="width: 150px"><i
+                        class="bi bi-send"></i> Send</button>
+            </div>
+        </div>
+
+
+        <div id="errorMessageContainer" class="alert alert-danger text-start mt-5" style="display: none;" role="alert">
+            <h4 class="alert-heading">Error</h4>
+            <p id="errorMessage">
+
+            </p>
+        </div>
+
+        <div id="successMessageContainer" class="alert alert-success text-start mt-5" style="display: none;"
+            role="alert">
+            <h4 class="alert-heading">The request has been submitted successfully</h4>
+            <p id="successMessage">
+            </p>
+        </div>
+
+        <div id="actionUrl" style="color: gray;" class="text-start">
+
+        </div>
+    </div>
+
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
+        integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.4/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YUe2LzesAfftltw+PEaao2tjU/QATaW/rOitAq67e0CT0Zi2VVRL0oC4+gAaeBKu"
+        crossorigin="anonymous"></script>
+
+    <script>
+        let statusCheckInterval;
+        let baseApiUrl = "https://woodgroove.azure-api.net"
+
+        function startStatusCheck(stateID) {
+            statusCheckInterval = setInterval(function () {
+                
+                // Make an AJAX request to check the status
+                $.ajax({
+                    url: baseApiUrl + '/api/status',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        state: stateID
+                    }),
+                    success: function (response) {
+                        // Handle success response
+                        $("#successMessageContainer").show();
+                        $("#successMessage").text(response.message);
+
+                        // If we have a final status, stop checking
+                        if (response.status === "presentation_verified") {
+                            clearInterval(statusCheckInterval);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        // Handle error response
+                        $("#errorMessageContainer").show();
+                        $("#errorMessage").text('Error checking status: ' + xhr.responseText);
+                        clearInterval(statusCheckInterval);
+                    },
+                    complete: function () {
+
+                    }
+                });
+            }, 3000); // Check every 3 seconds
+        }
+
+        $(document).ready(function () {
+            $("#sendButton").click(function () {
+                var upn = $("#upn").val();
+                var phone = $("#phone").val();
+
+                // Disable button while processing
+                $("#sendButton").prop('disabled', true);
+                $("#errorMessageContainer").hide();
+                $("#errorMessage").text('');
+                $("#successMessageContainer").hide();
+                $("#successMessage").text('');
+
+                $.ajax({
+                    url: baseApiUrl + '/api/presentation',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        upn: upn,
+                        phone: phone
+                    }),
+                    success: function (response) {
+                        // Handle success response
+                        $("#successMessageContainer").show();
+                        $("#successMessage").text(response.message);
+                        $("#actionUrl").text(response.url);
+
+                        console.log(response)
+                        
+                        // Start checking the status of the request
+                        startStatusCheck(response.RowKey)
+                    },
+                    error: function (xhr, status, error) {
+                        // Handle error response
+                        $("#errorMessageContainer").show();
+                        $("#errorMessage").text('Error sending verification request: ' + xhr.responseText);
+                    },
+                    complete: function () {
+                        // Re-enable button after request completes
+                        $("#sendButton").prop('disabled', false);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

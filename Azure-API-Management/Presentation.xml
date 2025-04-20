@@ -1,0 +1,26 @@
+<!--
+    - Policies are applied in the order they appear.
+    - Position <base/> inside a section to inherit policies from the outer scope.
+    - Comments within policies are not preserved.
+-->
+<!-- Add policies as children to the <inbound>, <outbound>, <backend>, and <on-error> elements -->
+    <policies>
+        <!-- Throttle, authorize, validate, cache, or transform the requests -->
+        <inbound>
+            <base />
+            <set-backend-service base-url="https://woodgrove.azurewebsites.net:443/api/vid-helpdesk-initiated-presentation/triggers/HTTP_endpoint" />
+            <rewrite-uri template="/invoke?api-version=2022-05-01&amp;sp=%2Ftriggers%2FHTTP_endpoint%2Frun&amp;sv=1.0&amp;sig=..." copy-unmatched-params="false" />
+        </inbound>
+        <!-- Control if and how the requests are forwarded to services  -->
+        <backend>
+            <base />
+        </backend>
+        <!-- Customize the responses -->
+        <outbound>
+            <base />
+        </outbound>
+        <!-- Handle exceptions and customize error responses  -->
+        <on-error>
+            <base />
+        </on-error>
+    </policies>
