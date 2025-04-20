@@ -200,7 +200,7 @@
                         "recipients": {
                             "to": [
                                 {
-                                    "address": "yoelhor@live.com"
+                                    "address": "@triggerBody()?['phone']"
                                 }
                             ]
                         },
