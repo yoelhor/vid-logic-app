@@ -45,7 +45,11 @@
                         }
                     ]
                 },
-                "runAfter": {}
+                "runAfter": {
+                    "Condition": [
+                        "SUCCEEDED"
+                    ]
+                }
             },
             "Switch": {
                 "type": "Switch",
@@ -108,6 +112,50 @@
                         "SUCCEEDED"
                     ]
                 }
+            },
+            "Condition": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "not": {
+                                "equals": [
+                                    "@triggerOutputs()?['headers']['api-key']",
+                                    "@parameters('ApiKey')"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "actions": {
+                    "Invalid_api-key_response": {
+                        "type": "Response",
+                        "kind": "Http",
+                        "inputs": {
+                            "statusCode": 401,
+                            "body": "Invalid API key"
+                        }
+                    },
+                    "Terminate": {
+                        "type": "Terminate",
+                        "inputs": {
+                            "runStatus": "Failed",
+                            "runError": {
+                                "code": "401",
+                                "message": "Invalid api-key"
+                            }
+                        },
+                        "runAfter": {
+                            "Invalid_api-key_response": [
+                                "SUCCEEDED"
+                            ]
+                        }
+                    }
+                },
+                "else": {
+                    "actions": {}
+                },
+                "runAfter": {}
             }
         },
         "contentVersion": "1.0.0.0",
