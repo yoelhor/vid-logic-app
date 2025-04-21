@@ -206,6 +206,15 @@ The [parameters](./Azure-Logic-app/parameters.json) necessary for the workflows
 - The `azuretables` [API Connections](./Azure-Logic-app/connections.json) enable the reading and writing of entities within the Azure Blob table.
 - The `acsemail` [API Connections](./Azure-Logic-app/connections.json) is used to send email via Azure Email Communication Service.
 
+## Azure Table Storage
+
+Azure Table Storage is a service that stores structured NoSQL data in the cloud. We use this service to persists the presentation flow state for the users, including:
+
+- **PartitionKey** set to 'State'
+- **RowKey** is the user state identifier (user UPN).
+- Request status
+- User-friendly message
+- The URI to initiate the presentation flow upon user interaction
 
 ## Azure API Management
 
