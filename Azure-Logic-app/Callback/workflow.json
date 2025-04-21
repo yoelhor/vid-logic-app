@@ -55,12 +55,20 @@
                 "type": "Switch",
                 "expression": "@triggerBody()?['requestStatus']",
                 "default": {
-                    "actions": {}
+                    "actions": {
+                        "Set_unknown": {
+                            "type": "SetVariable",
+                            "inputs": {
+                                "name": "Message",
+                                "value": "Unknown status: @{triggerBody()?['requestStatus']}"
+                            }
+                        }
+                    }
                 },
                 "cases": {
                     "request_created": {
                         "actions": {
-                            "Set_variable": {
+                            "Set_request_created": {
                                 "type": "SetVariable",
                                 "inputs": {
                                     "name": "Message",
@@ -72,7 +80,7 @@
                     },
                     "request_retrieved": {
                         "actions": {
-                            "Set_variable_1": {
+                            "Set_request_retrieved": {
                                 "type": "SetVariable",
                                 "inputs": {
                                     "name": "Message",
@@ -84,7 +92,7 @@
                     },
                     "presentation_error": {
                         "actions": {
-                            "Set_variable_2": {
+                            "Set_presentation_error": {
                                 "type": "SetVariable",
                                 "inputs": {
                                     "name": "Message",
@@ -96,7 +104,7 @@
                     },
                     "presentation_verified": {
                         "actions": {
-                            "Set_variable_3": {
+                            "Set_presentation_verified": {
                                 "type": "SetVariable",
                                 "inputs": {
                                     "name": "Message",
