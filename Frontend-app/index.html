@@ -88,13 +88,15 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-floating">
-                        <input type="email" class="form-control" id="upn" name="upn" required placeholder="10@example.com">
+                        <input type="email" class="form-control" id="upn" name="upn" required
+                            placeholder="10@example.com">
                         <label for="upn"><i class="bi bi-person"></i> User Principal Name (UPN)</label>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-floating">
-                        <input type="text" class="form-control" id="phone" name="phone" placeholder="+1 555-555-5555" required>
+                        <input type="text" class="form-control" id="phone" name="phone" placeholder="+1 555-555-5555"
+                            required>
                         <label for="phone"><i class="bi bi-telephone"></i> Phone Number or Email</label>
                     </div>
                 </div>
@@ -109,15 +111,24 @@
             </div>
         </div>
 
+        <div id="progressSection" class="mt-4" style="display: none;">
+            <h6 class="text-muted mb-2">Verification Progress</h6>
+            <div class="progress" style="height: 20px;">
+                <div id="verificationProgress" class="progress-bar progress-bar-striped progress-bar-animated"
+                    role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">0%
+                </div>
+            </div>
+        </div>
+
         <div id="errorMessageContainer" class="alert alert-danger text-start mt-4" style="display: none;" role="alert">
             <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Error</h5>
             <p id="errorMessage" class="mb-0"></p>
         </div>
 
-        <div id="successMessageContainer" class="alert alert-success text-start mt-4" style="display: none;" role="alert">
-            <h5 class="alert-heading"><i class="bi bi-check-circle"></i> Success</h5>
-            <p id="successMessage" class="mb-0"></p>
-        </div>
+        <!-- <div id="successMessageContainer" class="alert alert-success text-start mt-4" style="display: none;"
+            role="alert"> -->
+        <p id="successMessage" class="mb-0"></p>
+        <!-- </div> -->
 
         <div id="actionUrl" class="text-muted mt-4 small" style="display: none;">
         </div>
@@ -136,9 +147,10 @@
         let baseApiUrl = "https://woodgroove.azure-api.net"
 
         function startStatusCheck(stateID) {
-            statusCheckInterval = setInterval(function () {
+            // Show progress bar when starting status check
+            $("#progressSection").show();
 
-                // Make an AJAX request to check the status
+            statusCheckInterval = setInterval(function () {
                 $.ajax({
                     url: baseApiUrl + '/api/status',
                     type: 'POST',
@@ -147,6 +159,28 @@
                         state: stateID
                     }),
                     success: function (response) {
+                        console.log(response);
+
+                        // Update progress based on status
+                        let progress = 0;
+                        switch (response.status) {
+                            case 'request_created':
+                                progress = 25;
+                                break;
+                            case 'request_retrieved':
+                                progress = 50;
+                                break;
+                            case 'presentation_verified':
+                                progress = 100;
+                                break;
+                        }
+
+                        // Update progress bar
+                        $("#verificationProgress")
+                            .css('width', progress + '%')
+                            .attr('aria-valuenow', progress)
+                            .text(progress + '%');
+
                         // Handle success response
                         $("#successMessageContainer").show();
                         $("#successMessage").text(response.message);
@@ -161,12 +195,9 @@
                         $("#errorMessageContainer").show();
                         $("#errorMessage").text('Error checking status: ' + xhr.responseText);
                         clearInterval(statusCheckInterval);
-                    },
-                    complete: function () {
-
                     }
                 });
-            }, 3000); // Check every 3 seconds
+            }, 3000);
         }
 
         $(document).ready(function () {
@@ -181,6 +212,12 @@
                 $("#successMessageContainer").hide();
                 $("#successMessage").text('');
 
+                $("#verificationProgress")
+                    .css('width', '0%')
+                    .attr('aria-valuenow', 0)
+                    .text('0%');
+                $("#progressSection").hide;
+
                 $.ajax({
                     url: baseApiUrl + '/api/presentation',
                     type: 'POST',
@@ -194,6 +231,12 @@
                         $("#successMessageContainer").show();
                         $("#successMessage").text(response.message);
                         $("#actionUrl").text(response.url);
+
+
+                        $("#verificationProgress")
+                            .css('width', '10%')
+                            .attr('aria-valuenow', 10)
+                            .text('10%');
 
                         console.log(response)
 
