@@ -210,24 +210,8 @@
         let statusCheckInterval;
         let baseApiUrl = "https://woodgroove.azure-api.net"
 
-        function startStatusCheck(stateID) {
-            statusCheckInterval = setInterval(function () {
-                $.ajax({
-                    url: baseApiUrl + '/api/status',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({
-                        state: stateID
-                    }),
-                    success: function (response) {
-                        // Handle success response
-                        handleResponse(response)
-                    },
-                    error: handleError
-                });
-            }, 2000);
-        }
-
+        // This function runs when the document is ready
+        // It sets up the click event handler for the send button which starts the verification process
         $(document).ready(function () {
             $("#sendButton").click(function () {
 
@@ -238,15 +222,12 @@
                 $("#successMessageContainer").show();
 
                 // Reset progress bar
-                $("#verificationProgress")
-                    .addClass('progress-bar-animated')
-                    .addClass('progress-bar-striped')
+                $("#progressSection").show();
+                $("#verificationProgress").addClass('progress-bar-animated').addClass('progress-bar-striped')
                 $("#verificationProgress").css('width', '5%').attr('aria-valuenow', 5).text('5%');
                 $("#successMessage").text("Processing your request...");
 
-                // Show progress bar when starting status check
-                $("#progressSection").show();
-
+                // Call the web API to start the presentation process
                 $.ajax({
                     url: baseApiUrl + '/api/presentation',
                     type: 'POST',
@@ -266,6 +247,25 @@
                 });
             });
         });
+
+        // Set interval to check the status of the request
+        function startStatusCheck(stateID) {
+            statusCheckInterval = setInterval(function () {
+                $.ajax({
+                    url: baseApiUrl + '/api/status',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        state: stateID
+                    }),
+                    success: function (response) {
+                        // Handle success response
+                        handleResponse(response)
+                    },
+                    error: handleError
+                });
+            }, 2000);
+        }
 
         // Handle successful response from the API
         function handleResponse(response, initial) {
