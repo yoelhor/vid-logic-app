@@ -2,68 +2,7 @@
     "definition": {
         "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
         "actions": {
-            "Response": {
-                "type": "Response",
-                "kind": "Http",
-                "inputs": {
-                    "statusCode": 200,
-                    "headers": {
-                        "test-version": "2"
-                    },
-                    "body": "@body('Get_entity_(V2)')"
-                },
-                "runAfter": {
-                    "Send_email": [
-                        "SUCCEEDED"
-                    ]
-                }
-            },
-            "Acquire_access_token": {
-                "type": "Http",
-                "inputs": {
-                    "uri": "https://login.microsoftonline.com/@{parameters('TenantId')}/oauth2/v2.0/token",
-                    "method": "POST",
-                    "headers": {
-                        "Content-Type": "application/x-www-form-urlencoded"
-                    },
-                    "body": "grant_type=client_credentials&client_id=@{parameters('ClientId')}&client_secret=@{parameters('ClientSecret')}&scope=@{parameters('Scope')}"
-                },
-                "runAfter": {},
-                "runtimeConfiguration": {
-                    "contentTransfer": {
-                        "transferMode": "Chunked"
-                    }
-                }
-            },
-            "Parse_token_JSON": {
-                "type": "ParseJson",
-                "inputs": {
-                    "content": "@body('Acquire_access_token')",
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "token_type": {
-                                "type": "string"
-                            },
-                            "expires_in": {
-                                "type": "integer"
-                            },
-                            "ext_expires_in": {
-                                "type": "integer"
-                            },
-                            "access_token": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                },
-                "runAfter": {
-                    "Acquire_access_token": [
-                        "SUCCEEDED"
-                    ]
-                }
-            },
-            "Call_VID": {
+            "Call_Entra_verified_ID": {
                 "type": "Http",
                 "inputs": {
                     "uri": "https://verifiedid.did.msidentity.com/v1.0/verifiableCredentials/createPresentationRequest",
@@ -107,47 +46,21 @@
                         ]
                     },
                     "authentication": {
-                        "type": "Raw",
-                        "value": "Bearer @{body('Parse_token_JSON')?['access_token']}"
+                        "type": "ManagedServiceIdentity",
+                        "audience": "3db474b9-6a0c-4840-96ac-1fceb342124f/.default"
                     }
                 },
-                "runAfter": {
-                    "Parse_token_JSON": [
-                        "SUCCEEDED"
-                    ]
-                },
+                "runAfter": {},
                 "runtimeConfiguration": {
                     "contentTransfer": {
                         "transferMode": "Chunked"
                     }
                 }
             },
-            "Insert_or_Merge_Entity_(V2)": {
-                "type": "ApiConnection",
-                "inputs": {
-                    "host": {
-                        "connection": {
-                            "referenceName": "azuretables"
-                        }
-                    },
-                    "method": "patch",
-                    "body": {
-                        "status": "request_created",
-                        "message": "Waiting for the user to open the notification.",
-                        "url": "@{body('Parse_VID_response_JSON')?['url']}"
-                    },
-                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/tables/@{encodeURIComponent('State')}/entities(PartitionKey='@{encodeURIComponent('State')}',RowKey='@{encodeURIComponent(triggerBody()?['upn'])}')"
-                },
-                "runAfter": {
-                    "Parse_VID_response_JSON": [
-                        "SUCCEEDED"
-                    ]
-                }
-            },
-            "Parse_VID_response_JSON": {
+            "Parse_verified_ID_JSON_response": {
                 "type": "ParseJson",
                 "inputs": {
-                    "content": "@body('Call_VID')",
+                    "content": "@body('Call_Entra_verified_ID')",
                     "schema": {
                         "type": "object",
                         "properties": {
@@ -164,12 +77,39 @@
                     }
                 },
                 "runAfter": {
-                    "Call_VID": [
+                    "Call_Entra_verified_ID": [
                         "SUCCEEDED"
                     ]
                 }
             },
-            "Get_entity_(V2)": {
+            "Compose_state_JSON": {
+                "type": "Compose",
+                "inputs": {
+                    "status": "request_created",
+                    "message": "Waiting for the user to open the notification.",
+                    "url": "@{body('Parse_verified_ID_JSON_response')?['url']}",
+                    "version": "1"
+                },
+                "runAfter": {
+                    "Parse_verified_ID_JSON_response": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Response": {
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                    "statusCode": 200,
+                    "body": "@outputs('Compose_state_JSON')"
+                },
+                "runAfter": {
+                    "Update_state_table": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Update_state_table": {
                 "type": "ApiConnection",
                 "inputs": {
                     "host": {
@@ -177,46 +117,12 @@
                             "referenceName": "azuretables"
                         }
                     },
-                    "method": "get",
-                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/tables/@{encodeURIComponent('State')}/entities(PartitionKey='@{encodeURIComponent('State')}',RowKey='@{encodeURIComponent(triggerBody()?['upn'])}')"
+                    "method": "put",
+                    "body": "@outputs('Compose_state_JSON')",
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent(parameters('StorageAccountName')))}/tables/@{encodeURIComponent('VerifiedIdState')}/entities(PartitionKey='@{encodeURIComponent('key')}',RowKey='@{encodeURIComponent(triggerBody()?['upn'])}')"
                 },
                 "runAfter": {
-                    "Insert_or_Merge_Entity_(V2)": [
-                        "SUCCEEDED"
-                    ]
-                }
-            },
-            "Send_email": {
-                "type": "ApiConnection",
-                "inputs": {
-                    "host": {
-                        "connection": {
-                            "referenceName": "acsemail"
-                        }
-                    },
-                    "method": "post",
-                    "body": {
-                        "senderAddress": "DoNotReply@woodgrovedemo.com",
-                        "recipients": {
-                            "to": [
-                                {
-                                    "address": "@triggerBody()?['phone']"
-                                }
-                            ]
-                        },
-                        "content": {
-                            "subject": "Action Required: Verify your identity",
-                            "html": "<p class=\"editor-paragraph\">Action Required: Please verify your identity using the following URL</p><p class=\"editor-paragraph\"><br>@{body('Parse_VID_response_JSON')?['url']}</p><br><p class=\"editor-paragraph\"><a href=\"@{body('Parse_VID_response_JSON')?['url']}\" class=\"editor-link\">Verify</a></p>"
-                        },
-                        "importance": "Normal"
-                    },
-                    "path": "/emails:sendGAVersion",
-                    "queries": {
-                        "api-version": "2023-03-31"
-                    }
-                },
-                "runAfter": {
-                    "Get_entity_(V2)": [
+                    "Compose_state_JSON": [
                         "SUCCEEDED"
                     ]
                 }
@@ -225,7 +131,7 @@
         "contentVersion": "1.0.0.0",
         "outputs": {},
         "triggers": {
-            "HTTP_endpoint": {
+            "api": {
                 "type": "Request",
                 "kind": "Http",
                 "inputs": {
@@ -241,8 +147,7 @@
                             }
                         }
                     }
-                },
-                "operationOptions": "EnableSchemaValidation"
+                }
             }
         }
     },
