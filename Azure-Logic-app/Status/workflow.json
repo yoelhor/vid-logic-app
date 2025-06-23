@@ -1,53 +1,53 @@
 {
-  "definition": {
-      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
-      "actions": {
-          "Response": {
-              "type": "Response",
-              "kind": "Http",
-              "inputs": {
-                  "statusCode": 200,
-                  "body": "@body('Get_entity_(V2)')"
-              },
-              "runAfter": {
-                  "Get_entity_(V2)": [
-                      "SUCCEEDED"
-                  ]
-              }
-          },
-          "Get_entity_(V2)": {
-              "type": "ApiConnection",
-              "inputs": {
-                  "host": {
-                      "connection": {
-                          "referenceName": "azuretables"
-                      }
-                  },
-                  "method": "get",
-                  "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/tables/@{encodeURIComponent('Sate')}/entities(PartitionKey='@{encodeURIComponent('State')}',RowKey='@{encodeURIComponent(triggerBody()?['state'])}')"
-              },
-              "runAfter": {}
-          }
-      },
-      "contentVersion": "1.0.0.0",
-      "outputs": {},
-      "triggers": {
-          "HTTP_endpoint": {
-              "type": "Request",
-              "kind": "Http",
-              "inputs": {
-                  "method": "POST",
-                  "schema": {
-                      "type": "object",
-                      "properties": {
-                          "state": {
-                              "type": "string"
-                          }
-                      }
-                  }
-              }
-          }
-      }
-  },
-  "kind": "Stateful"
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Response": {
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                    "statusCode": 200,
+                    "body": "@body('Get_the_state')"
+                },
+                "runAfter": {
+                    "Get_the_state": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Get_the_state": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "referenceName": "azuretables"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent(parameters('StorageAccountName')))}/tables/@{encodeURIComponent('VerifiedIdState')}/entities(PartitionKey='@{encodeURIComponent('Key')}',RowKey='@{encodeURIComponent(triggerBody()?['state'])}')"
+                },
+                "runAfter": {}
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "triggers": {
+            "HTTP_endpoint": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "method": "POST",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "state": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "kind": "Stateful"
 }

@@ -9,12 +9,12 @@
                     "statusCode": 200
                 },
                 "runAfter": {
-                    "Insert_or_Merge_Entity_(V2)": [
+                    "Update_the_state_table": [
                         "SUCCEEDED"
                     ]
                 }
             },
-            "Insert_or_Merge_Entity_(V2)": {
+            "Update_the_state_table": {
                 "type": "ApiConnection",
                 "inputs": {
                     "host": {
@@ -27,7 +27,7 @@
                         "status": "@{triggerBody()?['requestStatus']}",
                         "message": "@variables('Message')"
                     },
-                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent('AccountNameFromSettings'))}/tables/@{encodeURIComponent('State')}/entities(PartitionKey='@{encodeURIComponent('State')}',RowKey='@{encodeURIComponent('yoel@woodgrovecorp.onmicrosoft.com')}')"
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent(parameters('StorageAccountName')))}/tables/@{encodeURIComponent('VerifiedIdState')}/entities(PartitionKey='@{encodeURIComponent('Key')}',RowKey='@{encodeURIComponent(triggerBody()?['state'])}')"
                 },
                 "runAfter": {
                     "Switch": [
