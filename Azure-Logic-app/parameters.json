@@ -7,19 +7,7 @@
     "type": "String",
     "value": "https://woodgroove.azure-api.net/callback"
   },
-  "ClientId": {
-    "type": "String",
-    "value": ""
-  },
-  "ClientSecret": {
-    "type": "String",
-    "value": ""
-  },
   "DidAuthority": {
-    "type": "String",
-    "value": ""
-  },
-  "TenantId": {
     "type": "String",
     "value": ""
   },
