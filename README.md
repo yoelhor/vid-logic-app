@@ -280,3 +280,73 @@ The final workflow checks the state session status, reads the state cache, and r
 1. Then select **create**.
 1. The new workflow will appear on the list, select it, select it.
 1. 1. Edit the workflow. Switch to the **Code view** and paste the content of the [Status/workflow.json](./Azure-Logic-app/Status/workflow.json) and save the changes.
+
+## 10. Create an API Management service
+
+Azure API Management functions as a gateway for all requests from frontend application and Microsoft Entra. The requests first reach the APIM gateway, which then forwards them to respective backend services (using URL rewrite).
+
+The APIM simplifies the complex URL of Logic Apps, making it consumable by Entra verified ID. Handles Cross-Origin Resource Sharing (CORS) for endpoints. This ensures secure access from different origins, which is important for single-page applications and AJAX calls that need to make cross-domain requests. Can configure OAuth 2.0 authorization with Microsoft Entra ID to secure access to the verifier and status endpoints.
+
+1. Go to portal.azure.com and sign in with your admin account.
+1. Search and select **API Management services**.
+1. On the Logic apps page, select **Add**.
+1. Select the resource group where the Logic App is managed.
+1. Configure the geographic **Region** close to the Logic App.
+1. A **Resource name** with unique name for your API Management instance. The name can't be changed later.
+1. The name of your organization. .
+1. The **Administrator email** address to which all system notifications from API Management will be sent.
+1. Select a **Pricing tier** with the features you need. The **Basic v2** tier is an economical choice for development and testing scenarios. You can also choose the **Developer tier**.
+1. Select **Review & create**, then select **Create**. It can take aobut 30-60 minutes.
+1. After the APIM deployment has been successfully completed, proceed to select it.
+
+### 10.1 Create an HTTP API 
+
+1. From the menu, select **APIs**, then select **Add API**.
+1. In the **Define a new API** page, select **HTTP**.
+1. In the **Create an HTTP API**:
+    1. Enter a **Display name**, like "Verified ID endpoints". The **Name** of the API will be changed accordingly. 
+    1. For the **Web service URL**, copy the first part of the Azure Logic app workflow URL. All workflows in the same Logic App share the same initial URL segment (including the `/api`). For example, `http
+    https://verified-id.azurewebsites.net:443/api`
+    1. You can add a **API URL suffix**.
+
+    Here is an example how to create an HTTP API:
+    ![](./help/apim-create-api.png)
+
+    1. Finally, select **Create**.
+
+### 10.2 Add operations 
+
+Repeat the steps outlined in this section for each of the three Logic App workflows you have created.
+
+1. Select **Add Operation**.
+1. Display name of the operation. For example, for the **Presentation** workflow, call it **Presentation**.
+1. The HTTP method is always **PSOT** for all three workflows.
+
+    The following screenshot demonstrates how to add an operation called 'presentation'
+    
+    ![](./help/apim-create-operation.png)
+
+1. Select **Save**.
+1. After it has been successfully created, select it. Make sure you select the operation itself and NOT the *All operations*.
+1. In the **Inbound processing**, select **Add Policy**.
+
+    ![](./help/apim-add-policy.png)
+
+1. Select the **Rewrite URL** policy.
+1. Set the HTTP **Method** to **POST**.
+1. Add the last part of the URL (after the `/api`). For example, `/Presentation/triggers/api/invoke?api-version=2022-05-01&sp=%2Ftriggers%2Fapi%2Frun&sv=1.0&sig=abcd...`
+
+    ![](./help/apim-add-policy-2.png)
+
+1. Please repeat the process for the remaining two endpoints.
+
+### 10.3 Update the callback URL
+
+
+1. Select the **Callback** operation.
+1. From the top menu, select the **Test** tab.
+    
+    ![](./help/apim-get-url.png)    
+
+1. Go to the Azure Logic app **Parameters**.
+1. Set the value of the **CallbackUrl** URL to 
