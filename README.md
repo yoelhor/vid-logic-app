@@ -3,39 +3,19 @@
 
 Follow the steps in this article to deploy the Helpdesk IF prove solution. For the solution overview, please check the [Helpdesk ID prove request overview](Overview.md) document.
 
-## 1. Register an application
+## 1. Prepare your environment
 
-To begin, register your application in Microsoft Entra ID. This registration allows your backend web APIs (Azure Logic Apps) to authenticate securely using credentials like client secrets or certificates. This process ensures that only authorized applications (like the Logic App) can request an access token and interact with the Verified ID APIs.
-
-1. Sign in to the Microsoft Entra admin center with appropriate administrator permissions.
-1. From the menu, select **applications** and then **App registrations**.
-1. From the list of applications, select **+ New registration**.
-    1. Enter a display **Name**. For example: “Verified ID app”.
-    1. For the **Supported account types**, select `Accounts in this organizational directory only`.
-    1. Select **Register** to create the application.
-1. After the application successfully registered, from the **overview** page, copy the “Application ID”.
-1. While in the **overview** page, take a note of the **tenant ID**.
-1. Next, you grant permissions to the verified ID Request Service principal. To do so: 
-    1. From the menu, select **API permissions**.
-    1. Select **Add a permission**.
-    1. Select **APIs my organization uses**.
-    1. Search for the `Verifiable Credentials` and select the `Verifiable Credentials Service Request`.
-    1. Choose **Application Permission** and select the `VerifiableCredential.Create.PresentRequest` option. It allows the application to create verified ID presentation requests.
-    1. Finally, select **Add permissions**.
-1. Admin consent is required for this permission. So, select **Grant admin consent** for your tenant.
-1. To ensure that only your application can request and receive security tokens to access the “verified ID service request API”, it is necessary to add a credential.
-    1. From the main menu, select &**Certificates & secrets**.
-    1. Select **New client secret**.
-    1. Enter a **description** for the client secret.
-    1. Under **Expires**, select a duration for which the secret is valid.
-    1. Then select **Add**.
-    1. Record the **secret's Value**. You'll use this value for configuration in a later step. The secret’s value won't be displayed again and isn't retrievable by any other means.
+Start by setting up your verified ID service using either the [quick](https://learn.microsoft.com/en-us/entra/verified-id/verifiable-credentials-configure-tenant-quick) or [advanced](https://learn.microsoft.com/en-us/entra/verified-id/verifiable-credentials-configure-tenant) setup. 
 
 ## 2. Get the authority of your verified ID service
  
 1. From the menu, under **verified ID**, select **credentials**.
 1. Select one of the credentials, like the **Verified employee**.
-1. From the **request body** JSON, copy the value of the **authority** ID. The authority is your Decentralized Identifier. The authority ID is required even if you have already copied the tenant ID that uniquely identifies your tenant. This is because your verified ID service can verify credentials issued by both your organization and other organizations. Therefore, it is necessary to specify which credentials, such as verified employees, users can present.
+1. From the **request body** JSON, copy the value of the **authority** ID. 
+
+    ![Screenshot of the authority ID](https://learn.microsoft.com/en-us/entra/verified-id/media/verifiable-credentials-configure-issuer/issue-credential-custom-view.png)
+    
+    The authority is your Decentralized Identifier. The authority ID is required even if you have already copied the tenant ID that uniquely identifies your tenant. This is because your verified ID service can verify credentials issued by both your organization and other organizations. Therefore, it is necessary to specify which credentials, such as verified employees, users can present.
 
 ## 3. Create Azure Logic app service
 
@@ -54,13 +34,56 @@ To begin, register your application in Microsoft Entra ID. This registration all
 1. After Azure validates your logic app setting, select **create**.
 1. On the deployment completion page, you can select **Go to resource**. Or select the logic app from the search box.
 
-## 4. Prepare the Blob Storage account
+## 4. Grant Managed Identity access to Verified ID Service
+
+[Managed identity](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/overview) in Entra ID enables Azure services, such as Logic App, to other services without storing credentials in your app. It simplifies access control by automatically managing identity credentials for apps and services. This process involves granting the Azure Logic app access to the Microsoft Entra Verified ID request service.
+
+1. Start by getting the Logic App system managed identity.
+    1. In the Azure Logic, under  **Settings**, select **Identity**
+    1. In the **system identity** tab, make sure the **Status** is **On**.
+    1. Copy the **Object (principal) ID**.
+1. Next, find the service principal of the **Verifiable Credentials Service Request** service.
+    1. Open Graph Explorer at <https://aka.ms/ge>
+    1. Sign-in with your admin account. Make sure you have the permissions as listed [here](https://learn.microsoft.com/en-us/graph/api/serviceprincipal-get).
+    1. Run the following GET query. The [query](https://learn.microsoft.com/en-us/graph/api/serviceprincipal-get) searches for a service principal with the application ID `3db474b9-6a0c-4840-96ac-1fceb342124f`. This is a constant value across all Microsoft Entra ID tenants. The query will return the service principal ID and the application roles.
+
+    ```http
+    https://graph.microsoft.com/v1.0/servicePrincipals(appId='3db474b9-6a0c-4840-96ac-1fceb342124f')?$select=id,appRoles
+    ```
+1. Finally, grant the Logic App managed Identity permission to the **Verifiable Credentials Service Request** service.
+    1. Set the HTTP method to **POST**.
+    1. Set the URL query to the following and replace the **{principalId}** with the Azure Logic App Managed Identity service principal.
+
+    ```http
+    https://graph.microsoft.com/v1.0/servicePrincipals/{principalId}/appRoleAssignments
+    ```
+    
+    1. In the body enter the following JSON.
+
+    ```json
+    {
+      "principalId": "{principalId}",
+      "resourceId": "{resourceId}",   
+      "appRoleId": "{appRoleId}",
+    }
+    ```
+
+    Replace:
+    - {principalId} with the Azure Logic App Managed Identity service principal. It should be the one that appears in the URL.
+    - {resourceId} is the **id** from the previous query.
+    - {appRoleId} - In the previous query, locate the app role which its value `VerifiableCredential.Create.PresentRequest` and copy the ID.
+
+    The screenshot below demonstrates the process for constructing the request body.
+
+    ![Screenshot that shows how to construct the request body](./help/grant-permissions.png)
+    
+      
+
+## 5. Prepare the Blob Storage account
 
 When an Azure Logic App (Standard) is created, it comes with a Storage account. The storage account is used for workflows involving state management, file handling, or integration with other Azure services. The  storage account can be utilized to host a state table that monitors the progress of verified ID presentation requests.
 
-1. In the Azure Logic, under  **Settings**, select **Identity**
-1. In the **system identity** tab, make sure the **Status** is **On**.
-2. Next assign the **system identity** principal permission to access the storage account. To do so 
+2. Continue with the Azure Logic App **system identity** Managed Identity. Assign the principal permission to access the storage account. To do so: 
     1. Open the underling storage account (you can find it in the resource group).
     1. In the storage account, select **Access control (IAM)**.
     1. Select **Add** and select the **Add role assignment** option.
@@ -75,7 +98,7 @@ When an Azure Logic App (Standard) is created, it comes with a Storage account. 
     1. Select "Okay” to create the table.
 1. Go the **Overview** page, and copy the storage account name.
 
-## 5. Add the parameters for the workflows
+## 6. Add the parameters for the workflows
 
 In this step, add the required “parameters” for the workflows in the logic app. These parameters are values copied from the previous steps.
 
@@ -83,15 +106,12 @@ In this step, add the required “parameters” for the workflows in the logic a
 1. From the menu, select **parameters**.
 1. Copy the content of the [parameters.josn](./Azure-Logic-app/parameters.json) file and add it to the editor.
 1. Edit the following:
-    1. **TenantId** with your tenant ID that you copied earlier.
-    1. **ClientId** of the application you registered.
-    1. **ClientSecret** the application’s secret.
     1. **DidAuthority** the authority that uniquely identifies your verified id environment.
     1. **CallbackUrl** the callback URL which is the endpoint that Microsoft Entra Verified ID uses to notify your application about the request progress. You will update it later.
     1. **ApiKey** is the “API key” for securing callback notifications sent by Microsoft Entra verified ID to your application. You can generate a value like a secret.
     1. **StorageAccountName** with the storage account associated with your Azure Logic App.
 
-## 6. Create the presentation workflow
+## 7. Create the presentation workflow
 
 With all components in place, except the mail service, proceed with building the workflows. When the helpdesk personnel request the user to verify their identity, the application interface calls this endpoint.
 
@@ -122,51 +142,7 @@ With all components in place, except the mail service, proceed with building the
       }
     }
     ```
-1.	The next step is to request an access token that can be used to call the Verified ID request service.
-    1. Click on the **plus** button and select **add an action**.
-    1. For the type select, **HTTP**.
-    1. Change the name to `Obtain security token`.
-    1.For the URL, enter: 
-    
-    ```
-    https://login.microsoftonline.com/@{parameters('TenantId')}/oauth2/v2.0/token
-    ```
-    1.Change the HTTP **method** to `POST`.
-    1. Add an **HTTP header** `Content-Type` with the value of `application/x-www-form-urlencoded`
-    1. For the **body**, enter:
-    
-    ```
-    grant_type=client_credentials&client_id=@{parameters('ClientId')}&client_secret=@{parameters('ClientSecret')}&scope=3db474b9-6a0c-4840-96ac-1fceb342124f/.default
-    ```
-        
-1. The token endpoint provides a JSON document. In this step, you parse the JSON to retrieve the access token. 
-    1. Add an action type of **Parse JSON**.
-    1. Change the name of the action to `Parse token JSON`.
-    1. For the **Content** enter: `@{body('Obtain_security_token')}`
-    1. For the **Schema** enter:
-
-    ```json
-    {
-      "type": "object",
-      "properties": {
-        "token_type": {
-          "type": "string"
-        },
-        "expires_in": {
-          "type": "integer"
-        },
-        "ext_expires_in": {
-          "type": "integer"
-        },
-        "access_token": {
-          "type": "string"
-        }
-      }
-    }
-    ```
-     
-
-1. With the access token obtained, you can now call the Microsoft Entra verified ID request endpoint.
+1. The first action is to call the Microsoft Entra verified ID request endpoint.
 
     1. Add an action type of **HTTP**.
     1. Change the name to `Call Entra verified ID`.
@@ -221,12 +197,9 @@ With all components in place, except the mail service, proceed with building the
     ```
 
     1. Under **advanced parameters** select **authentication**.
-    1. For **authentication type**, select **raw**.
-    1. And for the **value**, enter:
-    
-    ```
-    Bearer @{body('Parse_token_JSON')?['access_token']}
-    ```
+    1. For **authentication type**, select **Managed Identity**.
+    1. In the **Managed identity**, select **System-assinged mangaged idenity**
+    1. For the audiance enter: `3db474b9-6a0c-4840-96ac-1fceb342124f/.default`
 
 1. Next, parse the response from the Microsoft Entra verified ID request endpoint.
     1. Add an action type of **Parse JSON**.
@@ -284,7 +257,7 @@ With all components in place, except the mail service, proceed with building the
     1. Make sure the status is `200`.
     1. For the Body, enter: `@{outputs('Compose_state_JSON')}`. It's the JSON document you composed in the previous steps.
 
-## 7. Add the Callback workflows
+## 8. Add the Callback workflows
 
 The next workflow is the “callback endpoint”. Microsoft Entra verified ID invokes this endpoint to update the application with the request’s progress. 
 
@@ -296,7 +269,7 @@ The next workflow is the “callback endpoint”. Microsoft Entra verified ID in
 1. The new workflow will appear on the list, select it.
 1. Edit the workflow. Switch to the **Code view** and paste the content of the [Callback/workflow.json](./Azure-Logic-app/Callback/workflow.json) and save the changes.
 
-## 8. Add the Status workflows
+## 9. Add the Status workflows
 
 The final workflow checks the state session status, reads the state cache, and returns it to your application.
 
