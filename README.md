@@ -132,6 +132,7 @@ With all components in place, except the mail service, proceed with building the
     ```json
     {
       "type": "object",
+      "required": ["upn", "phone"],  
       "properties": {
         "upn": {
           "type": "string"
@@ -142,6 +143,9 @@ With all components in place, except the mail service, proceed with building the
       }
     }
     ```
+
+    1. Select the **Settings** tab and enable **Schema validation**.
+    
 1. The first action is to call the Microsoft Entra verified ID request endpoint.
 
     1. Add an action type of **HTTP**.
