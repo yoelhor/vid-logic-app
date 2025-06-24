@@ -178,7 +178,7 @@
         <p id="successMessage" class="mb-0"></p>
         <!-- </div> -->
 
-        <div id="actionUrl" class="text-muted mt-4 small" style="display: none;">
+        <div id="actionUrl" class="text-muted mt-4 small" style="display: block;">
         </div>
     </div>
 
@@ -208,7 +208,7 @@
 
     <script>
         let statusCheckInterval;
-        let baseApiUrl = "https://woodgroove.azure-api.net"
+        let baseApiUrl = "https://woodgroove.azure-api.net/vid"
 
         // This function runs when the document is ready
         // It sets up the click event handler for the send button which starts the verification process
@@ -229,7 +229,7 @@
 
                 // Call the web API to start the presentation process
                 $.ajax({
-                    url: baseApiUrl + '/api/presentation',
+                    url: baseApiUrl + '/presentation',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({
@@ -241,7 +241,7 @@
                         handleResponse(response, 1)
 
                         // Start checking the status of the request
-                        startStatusCheck(response.RowKey)
+                        startStatusCheck()
                     },
                     error: handleError
                 });
@@ -249,14 +249,14 @@
         });
 
         // Set interval to check the status of the request
-        function startStatusCheck(stateID) {
+        function startStatusCheck() {
             statusCheckInterval = setInterval(function () {
                 $.ajax({
-                    url: baseApiUrl + '/api/status',
+                    url: baseApiUrl + '/status',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({
-                        state: stateID
+                        state: $("#upn").val()
                     }),
                     success: function (response) {
                         // Handle success response
@@ -276,6 +276,14 @@
                 response.message = "Verification email sent successfully.";
             }
 
+            // Check if the response contains a valid action URL and update the UI
+            if (response.url) {
+                $("#actionUrl").html( response.url)
+            }
+            else {
+                $("#actionUrl").html('');
+            }
+
             // Update progress based on status
             let progress = 0;
             switch (response.status) {
@@ -287,9 +295,11 @@
                     break;
                 case 'request_retrieved':
                     progress = 60;
+                    $("#actionUrl").html('');
                     break;
                 case 'presentation_verified':
                     progress = 100;
+                    $("#actionUrl").html('');
                     break;
             }
 

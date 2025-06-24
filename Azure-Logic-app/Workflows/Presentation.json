@@ -25,9 +25,7 @@
                         "requestedCredentials": [
                             {
                                 "type": "VerifiedEmployee",
-                                "acceptedIssuers": [
-                                    "@{parameters('DidAuthority')}"
-                                ],
+                                "acceptedIssuers": "@parameters('AcceptedIssuers')",
                                 "configuration": {
                                     "validation": {
                                         "allowRevoked": false,
@@ -88,7 +86,7 @@
                     "status": "request_created",
                     "message": "Waiting for the user to open the notification.",
                     "url": "@{body('Parse_verified_ID_JSON_response')?['url']}",
-                    "version": "1"
+                    "version": "1.1"
                 },
                 "runAfter": {
                     "Parse_verified_ID_JSON_response": [

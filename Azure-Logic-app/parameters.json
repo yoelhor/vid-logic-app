@@ -11,6 +11,12 @@
     "type": "String",
     "value": ""
   },
+    "AcceptedIssuers": {
+        "type": "Array",
+        "value": [
+            ""
+        ]
+    },
   "StorageAccountName": {
     "type": "String",
     "value": ""

@@ -11,11 +11,10 @@ Start by setting up your verified ID service using either the [quick](https://le
  
 1. From the menu, under **verified ID**, select **credentials**.
 1. Select one of the credentials, like the **Verified employee**.
-1. From the **request body** JSON, copy the value of the **authority** ID. 
+1. From the **request body** JSON, copy the value of the **authority** ID. It's your Decentralized Identifier.
 
     ![Screenshot of the authority ID](https://learn.microsoft.com/en-us/entra/verified-id/media/verifiable-credentials-configure-issuer/issue-credential-custom-view.png)
     
-    The authority is your Decentralized Identifier. The authority ID is required even if you have already copied the tenant ID that uniquely identifies your tenant. This is because your verified ID service can verify credentials issued by both your organization and other organizations. Therefore, it is necessary to specify which credentials, such as verified employees, users can present.
 
 ## 3. Create Azure Logic app service
 
@@ -107,6 +106,7 @@ In this step, add the required “parameters” for the workflows in the logic a
 1. Copy the content of the [parameters.josn](./Azure-Logic-app/parameters.json) file and add it to the editor.
 1. Edit the following:
     1. **DidAuthority** the authority that uniquely identifies your verified id environment.
+    1. **AcceptedIssuers** - In this collection, you specify the DID authorities of organizations you trust. In most cases, this should be your verified ID DID authority (the same value as the DidAuthority). However, there are scenarios where you may also want to accept verified ID credentials issued by other organizations. In this case, add more DID authorities as needed..
     1. **CallbackUrl** the callback URL which is the endpoint that Microsoft Entra Verified ID uses to notify your application about the request progress. You will update it later.
     1. **ApiKey** is the “API key” for securing callback notifications sent by Microsoft Entra verified ID to your application. You can generate a value like a secret.
     1. **StorageAccountName** with the storage account associated with your Azure Logic App.
@@ -246,7 +246,7 @@ With all components in place, except the mail service, proceed with building the
 
     1. Continue with the action settings:
     1. Change the **Name** to `Update state table`.
-    1. Partition **Key**, enter: `key`. Note, the name is not important.
+    1. Partition **Key**, enter: `key`. Please ensure that the key is entered exactly as provided, paying attention to case sensitivity. It should be in all lowercase letters.
     1. For the **Raw**, enter: `@{triggerBody()?['upn']}`
     1. For the **Storage account name or table endpoint**: enter: `@{parameters('StorageAccountName')}`
     1. For the **Table**, select `VerifiedIdState`.
@@ -267,7 +267,7 @@ The next workflow is the “callback endpoint”. Microsoft Entra verified ID in
 1. You can choose either **Stateful** or **stateless**. For non-production environment, choose the **Stateful* option. It can help solve technical issues.
 1. Then select **create**.
 1. The new workflow will appear on the list, select it.
-1. Edit the workflow. Switch to the **Code view** and paste the content of the [Callback/workflow.json](./Azure-Logic-app/Callback/workflow.json) and save the changes.
+1. Edit the workflow. Switch to the **Code view** and paste the content of the [Callback.json](./Azure-Logic-app/Workflows/Callback.json) and save the changes.
 
 ## 9. Add the Status workflows
 
@@ -279,7 +279,7 @@ The final workflow checks the state session status, reads the state cache, and r
 1. You can choose either **Stateful** or **stateless**. For non-production environment, choose the **Stateful* option. It can help solve technical issues.
 1. Then select **create**.
 1. The new workflow will appear on the list, select it, select it.
-1. 1. Edit the workflow. Switch to the **Code view** and paste the content of the [Status/workflow.json](./Azure-Logic-app/Status/workflow.json) and save the changes.
+1. 1. Edit the workflow. Switch to the **Code view** and paste the content of the [Status.json](./Azure-Logic-app/Workflows/Status.json) and save the changes.
 
 ## 10. Create an API Management service
 
@@ -310,7 +310,7 @@ The APIM simplifies the complex URL of Logic Apps, making it consumable by Entra
     1. You can add a **API URL suffix**.
 
     Here is an example how to create an HTTP API:
-    ![](./help/apim-create-api.png)
+    ![Screenshot that shows how to add a new HTTP API.](./help/apim-create-api.png)
 
     1. Finally, select **Create**.
 
@@ -324,29 +324,59 @@ Repeat the steps outlined in this section for each of the three Logic App workfl
 
     The following screenshot demonstrates how to add an operation called 'presentation'
     
-    ![](./help/apim-create-operation.png)
+    ![Screenshot that demonstrates how to add a new operation](./help/apim-create-operation.png)
 
 1. Select **Save**.
 1. After it has been successfully created, select it. Make sure you select the operation itself and NOT the *All operations*.
 1. In the **Inbound processing**, select **Add Policy**.
 
-    ![](./help/apim-add-policy.png)
+    ![Screenshot that shows how to add an inbound processing policy.](./help/apim-add-policy.png)
 
 1. Select the **Rewrite URL** policy.
 1. Set the HTTP **Method** to **POST**.
 1. Add the last part of the URL (after the `/api`). For example, `/Presentation/triggers/api/invoke?api-version=2022-05-01&sp=%2Ftriggers%2Fapi%2Frun&sv=1.0&sig=abcd...`
 
-    ![](./help/apim-add-policy-2.png)
+    ![Screenshot that demonstrates how to add a rewrite URL policy.](./help/apim-add-policy-2.png)
 
 1. Please repeat the process for the remaining two endpoints.
 
-### 10.3 Update the callback URL
+### 10.3 Disable API subscription
+
+An APIM subscription lets developers or applications access APIs through Azure APIM using a subscription key in request headers. For these endpoints, disable the subscription to allow the verified ID service to call the callback endpoint without needing a subscription key.
+
+1. Select the **Settings**.
+1. Scroll down to the **Subscription** section
+1. Uncheck the **Subscription required** and save the changes.
+
+### 10.4 Update the callback URL
 
 
 1. Select the **Callback** operation.
 1. From the top menu, select the **Test** tab.
     
-    ![](./help/apim-get-url.png)    
+    ![Screenshot that shows how to get the URL of an API](./help/apim-get-url.png)    
 
 1. Go to the Azure Logic app **Parameters**.
 1. Set the value of the **CallbackUrl** URL to 
+
+## Set CORS (for SPA apps)
+
+[Cross-Origin Resource Sharing (CORS)](https://learn.microsoft.com/en-us/azure/api-management/cors-policy) enables JavaScript code running in a browser on an external host to interact with API, like Azure Logic App endpoints. Specify the origins that are permitted to make cross-origin calls. For instance, a helpdesk single-page application running in the `http://woodgrovedemo.com` domain can access the web API endpoint at `https://woodgroove.azure-api.net`. To allow all origins, use "*" and remove all other specified origins from the list.
+
+1. Open the Azure API Management (APIM) and locate your API.
+1. From the menu, select **App operations**.
+1. In the **Inbound processing**, select **Add policy**.
+    
+    ![Screenshot that shows how to add an inbound processing policy](./help/apim-cors-1.png)
+
+1. From the list of policies, select the **Allow cross-origin resource sharing (CORS)** policy.
+1. In the **Allowed origins**, select **+ Add allowed origin**
+1. Add the origins (the single-page application) that should be allowed to make cross-origin calls to your web API. You can add multiple allowed origins. To allow all origins use `*`. 
+
+    ![Screenshot that shows how to add an allowed origin](./help/apim-cors-2.png)
+
+1. In the **Allowed methods**, check the **POST** and **OPTIONS** methods.
+1. For the **Allowed headers**, enter `*`.
+1. For the **Exposed headers**, enter `*`.
+    
+    ![Screenshot that shows how to add an allowed origin](./help/apim-cors-3.png)

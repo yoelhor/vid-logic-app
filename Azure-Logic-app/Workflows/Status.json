@@ -7,15 +7,15 @@
                 "kind": "Http",
                 "inputs": {
                     "statusCode": 200,
-                    "body": "@body('Get_the_state')"
+                    "body": "@body('Get_state_entity')"
                 },
                 "runAfter": {
-                    "Get_the_state": [
+                    "Get_state_entity": [
                         "SUCCEEDED"
                     ]
                 }
             },
-            "Get_the_state": {
+            "Get_state_entity": {
                 "type": "ApiConnection",
                 "inputs": {
                     "host": {
@@ -24,7 +24,7 @@
                         }
                     },
                     "method": "get",
-                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent(parameters('StorageAccountName')))}/tables/@{encodeURIComponent('VerifiedIdState')}/entities(PartitionKey='@{encodeURIComponent('Key')}',RowKey='@{encodeURIComponent(triggerBody()?['state'])}')"
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent(parameters('StorageAccountName')))}/tables/@{encodeURIComponent('VerifiedIdState')}/entities(PartitionKey='@{encodeURIComponent('key')}',RowKey='@{encodeURIComponent(triggerBody()?['state'])}')"
                 },
                 "runAfter": {}
             }
@@ -32,7 +32,7 @@
         "contentVersion": "1.0.0.0",
         "outputs": {},
         "triggers": {
-            "HTTP_endpoint": {
+            "api": {
                 "type": "Request",
                 "kind": "Http",
                 "inputs": {

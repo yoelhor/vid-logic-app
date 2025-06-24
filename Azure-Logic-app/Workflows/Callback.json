@@ -27,7 +27,7 @@
                         "status": "@{triggerBody()?['requestStatus']}",
                         "message": "@variables('Message')"
                     },
-                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent(parameters('StorageAccountName')))}/tables/@{encodeURIComponent('VerifiedIdState')}/entities(PartitionKey='@{encodeURIComponent('Key')}',RowKey='@{encodeURIComponent(triggerBody()?['state'])}')"
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent(parameters('StorageAccountName')))}/tables/@{encodeURIComponent('VerifiedIdState')}/entities(PartitionKey='@{encodeURIComponent('key')}',RowKey='@{encodeURIComponent(triggerBody()?['state'])}')"
                 },
                 "runAfter": {
                     "Switch": [
@@ -169,7 +169,7 @@
         "contentVersion": "1.0.0.0",
         "outputs": {},
         "triggers": {
-            "HTTP_endpoint": {
+            "api": {
                 "type": "Request",
                 "kind": "Http",
                 "inputs": {

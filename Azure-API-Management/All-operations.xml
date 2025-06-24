@@ -4,35 +4,21 @@
     - Comments within policies are not preserved.
 -->
 <!-- Add policies as children to the <inbound>, <outbound>, <backend>, and <on-error> elements -->
-    <policies>
-        <!-- Throttle, authorize, validate, cache, or transform the requests -->
-        <inbound>
-            <base />
-            <cors allow-credentials="false">
-                <allowed-origins>
-                    <origin>*</origin>
-                </allowed-origins>
-                <allowed-methods>
-                    <method>*</method>
-                </allowed-methods>
-                <allowed-headers>
-                    <header>*</header>
-                </allowed-headers>
-                <expose-headers>
-                    <header>*</header>
-                </expose-headers>
-            </cors>
-        </inbound>
-        <!-- Control if and how the requests are forwarded to services  -->
-        <backend>
-            <forward-request />
-        </backend>
-        <!-- Customize the responses -->
-        <outbound>
-            <base />
-        </outbound>
-        <!-- Handle exceptions and customize error responses  -->
-        <on-error>
-            <base />
-        </on-error>
-    </policies>
+<policies>
+    <!-- Throttle, authorize, validate, cache, or transform the requests -->
+    <inbound>
+        <base />
+    </inbound>
+    <!-- Control if and how the requests are forwarded to services  -->
+    <backend>
+        <base />
+    </backend>
+    <!-- Customize the responses -->
+    <outbound>
+        <base />
+    </outbound>
+    <!-- Handle exceptions and customize error responses  -->
+    <on-error>
+        <base />
+    </on-error>
+</policies>
