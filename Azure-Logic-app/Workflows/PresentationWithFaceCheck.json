@@ -1,0 +1,274 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Parse_verified_ID_JSON_response": {
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@body('Call_Entra_verified_ID')",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "requestId": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            },
+                            "expiry": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Call_Entra_verified_ID": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Compose_state_JSON": {
+                "type": "Compose",
+                "inputs": {
+                    "status": "request_created",
+                    "message": "Waiting for the user to open the notification.",
+                    "url": "@{body('Parse_verified_ID_JSON_response')?['url']}",
+                    "version": "1.1"
+                },
+                "runAfter": {
+                    "Parse_verified_ID_JSON_response": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Response": {
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                    "statusCode": 200,
+                    "body": "@outputs('Compose_state_JSON')"
+                },
+                "runAfter": {
+                    "Update_state_table": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Update_state_table": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "referenceName": "azuretables"
+                        }
+                    },
+                    "method": "put",
+                    "body": "@outputs('Compose_state_JSON')",
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent(parameters('StorageAccountName')))}/tables/@{encodeURIComponent('VerifiedIdState')}/entities(PartitionKey='@{encodeURIComponent('key')}',RowKey='@{encodeURIComponent(triggerBody()?['upn'])}')"
+                },
+                "runAfter": {
+                    "Compose_state_JSON": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Condition": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "equals": [
+                                "@triggerBody()?['facecheck']",
+                                true
+                            ]
+                        }
+                    ]
+                },
+                "actions": {
+                    "Compose_request_payload_with_face-check": {
+                        "type": "Compose",
+                        "inputs": {
+                            "authority": "@{parameters('DidAuthority')}",
+                            "includeQRCode": false,
+                            "registration": {
+                                "clientName": "Woodgrove helpdesk",
+                                "purpose": "Prove your identity"
+                            },
+                            "callback": {
+                                "url": "@{parameters('CallbackUrl')}",
+                                "state": "@{triggerBody()?['upn']}",
+                                "headers": {
+                                    "api-key": "@{parameters('ApiKey')}"
+                                }
+                            },
+                            "includeReceipt": false,
+                            "requestedCredentials": [
+                                {
+                                    "type": "VerifiedEmployee",
+                                    "acceptedIssuers": "@parameters('AcceptedIssuers')",
+                                    "configuration": {
+                                        "validation": {
+                                            "allowRevoked": false,
+                                            "validateLinkedDomain": true,
+                                            "faceCheck": {
+                                                "sourcePhotoClaimName": "photo",
+                                                "matchConfidenceThreshold": 70
+                                            }
+                                        }
+                                    },
+                                    "constraints": [
+                                        {
+                                            "claimName": "revocationId",
+                                            "values": [
+                                                "@{triggerBody()?['upn']}"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "Set_JSON_payload_variable_with_face-check": {
+                        "type": "SetVariable",
+                        "inputs": {
+                            "name": "jsonPayload",
+                            "value": "@outputs('Compose_request_payload_with_face-check')"
+                        },
+                        "runAfter": {
+                            "Compose_request_payload_with_face-check": [
+                                "SUCCEEDED"
+                            ]
+                        }
+                    }
+                },
+                "else": {
+                    "actions": {
+                        "Compose_request_payload": {
+                            "type": "Compose",
+                            "inputs": {
+                                "authority": "@{parameters('DidAuthority')}",
+                                "includeQRCode": false,
+                                "registration": {
+                                    "clientName": "Woodgrove helpdesk",
+                                    "purpose": "Prove your identity"
+                                },
+                                "callback": {
+                                    "url": "@{parameters('CallbackUrl')}",
+                                    "state": "@{triggerBody()?['upn']}",
+                                    "headers": {
+                                        "api-key": "@{parameters('ApiKey')}"
+                                    }
+                                },
+                                "includeReceipt": false,
+                                "requestedCredentials": [
+                                    {
+                                        "type": "VerifiedEmployee",
+                                        "acceptedIssuers": "@parameters('AcceptedIssuers')",
+                                        "configuration": {
+                                            "validation": {
+                                                "allowRevoked": false,
+                                                "validateLinkedDomain": true
+                                            }
+                                        },
+                                        "constraints": [
+                                            {
+                                                "claimName": "revocationId",
+                                                "values": [
+                                                    "@{triggerBody()?['upn']}"
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        },
+                        "Set_JSON_payload_variable": {
+                            "type": "SetVariable",
+                            "inputs": {
+                                "name": "jsonPayload",
+                                "value": "@outputs('Compose_request_payload')"
+                            },
+                            "runAfter": {
+                                "Compose_request_payload": [
+                                    "SUCCEEDED"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Initialize_JSON_payload_variable": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Call_Entra_verified_ID": {
+                "type": "Http",
+                "inputs": {
+                    "uri": "https://verifiedid.did.msidentity.com/v1.0/verifiableCredentials/createPresentationRequest",
+                    "method": "POST",
+                    "body": "@variables('jsonPayload')",
+                    "authentication": {
+                        "type": "ManagedServiceIdentity",
+                        "audience": "3db474b9-6a0c-4840-96ac-1fceb342124f/.default"
+                    }
+                },
+                "runAfter": {
+                    "Condition": [
+                        "SUCCEEDED"
+                    ]
+                },
+                "runtimeConfiguration": {
+                    "contentTransfer": {
+                        "transferMode": "Chunked"
+                    }
+                }
+            },
+            "Initialize_JSON_payload_variable": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "jsonPayload",
+                            "type": "object"
+                        }
+                    ]
+                },
+                "runAfter": {}
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "triggers": {
+            "api": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "method": "POST",
+                    "schema": {
+                        "type": "object",
+                        "required": [
+                            "upn",
+                            "phone",
+                            "facecheck"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "upn": {
+                                "type": "string"
+                            },
+                            "phone": {
+                                "type": "string"
+                            },
+                            "facecheck": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                },
+                "operationOptions": "EnableSchemaValidation"
+            }
+        }
+    },
+    "kind": "Stateful"
+}

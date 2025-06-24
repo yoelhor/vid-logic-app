@@ -39,13 +39,17 @@
                     "method": "POST",
                     "schema": {
                         "type": "object",
+                        "required": [
+                            "state"
+                        ],
                         "properties": {
                             "state": {
                                 "type": "string"
                             }
                         }
                     }
-                }
+                },
+                "operationOptions": "EnableSchemaValidation"
             }
         }
     },

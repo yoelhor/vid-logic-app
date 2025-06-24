@@ -149,7 +149,18 @@
                     </div>
                 </div>
             </div>
-
+            
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="form-check mb-3">
+                        <input type="checkbox" class="form-check-input" id="faceCheck" name="faceCheck">
+                        <label class="form-check-label text-muted" for="faceCheck">
+                            <i class="bi bi-person-bounding-box"></i> Require face check
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
             <div class="row mt-4">
                 <div class="col-12">
                     <button type="button" id="sendButton" class="btn btn-primary">
@@ -234,7 +245,8 @@
                     contentType: 'application/json',
                     data: JSON.stringify({
                         upn: $("#upn").val(),
-                        phone: $("#phone").val()
+                        phone: $("#phone").val(),
+                        faceCheck: $("#faceCheck").is(':checked')
                     }),
                     success: function (response) {
                         // Handle success response

@@ -136,6 +136,10 @@
                     "method": "POST",
                     "schema": {
                         "type": "object",
+                        "required": [
+                            "upn",
+                            "phone"
+                        ],
                         "properties": {
                             "upn": {
                                 "type": "string"
@@ -145,7 +149,8 @@
                             }
                         }
                     }
-                }
+                },
+                "operationOptions": "EnableSchemaValidation"
             }
         }
     },
