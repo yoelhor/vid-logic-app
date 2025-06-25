@@ -149,7 +149,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="row mt-4">
                 <div class="col-12">
                     <div class="form-check mb-3">
@@ -160,11 +160,22 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="row mt-4">
                 <div class="col-12">
                     <button type="button" id="sendButton" class="btn btn-primary">
                         <i class="bi bi-send"></i> Submit Verification
+                    </button>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div id="actionUrl" class="text-muted mt-4 small" style="display: none;"> </div>
+                    <!-- Add button to trigger modal -->
+                    <button type="button" id="sendEmailBtn" style="display: none;"
+                        class="btn btn-link link-secondary link-underline-light">
+                        <i class="bi bi-envelope"></i> Share via email
                     </button>
                 </div>
             </div>
@@ -189,7 +200,26 @@
         <p id="successMessage" class="mb-0"></p>
         <!-- </div> -->
 
-        <div id="actionUrl" class="text-muted mt-4 small" style="display: block;">
+        <!-- Add Modal for Email Form -->
+        <div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="emailModalLabel">Send Verification Link</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-floating">
+                            <input type="email" class="form-control" id="emailAddress" required>
+                            <label for="emailAddress">Email Address</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="confirmSendEmail">Send</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -220,10 +250,26 @@
     <script>
         let statusCheckInterval;
         let baseApiUrl = "https://woodgroove.azure-api.net/vid"
+        let emailModal;
+        let currentActionUrl = '';
 
         // This function runs when the document is ready
         // It sets up the click event handler for the send button which starts the verification process
         $(document).ready(function () {
+
+            // Initialize modal
+            emailModal = new bootstrap.Modal(document.getElementById('emailModal'));
+
+            // Show email button when URL is available
+            $("#sendEmailBtn").click(function () {
+                emailModal.show();
+            });
+
+            // Handle email sending
+            $("#confirmSendEmail").click(function () {
+                sendEmail();
+            });
+
             $("#sendButton").click(function () {
 
                 // Disable button while processing
@@ -281,7 +327,7 @@
 
         // Handle successful response from the API
         function handleResponse(response, initial) {
-            console.log(response);
+            //console.log(response);
 
             if (initial === 1) {
                 response.status = "email_sent";
@@ -290,7 +336,7 @@
 
             // Check if the response contains a valid action URL and update the UI
             if (response.url) {
-                $("#actionUrl").html( response.url)
+                $("#actionUrl").html(response.url)
             }
             else {
                 $("#actionUrl").html('');
@@ -301,12 +347,14 @@
             switch (response.status) {
                 case 'email_sent':
                     progress = 15;
+                    $("#sendEmailBtn").show();
                     break;
                 case 'request_created':
                     progress = 35;
                     break;
                 case 'request_retrieved':
                     progress = 60;
+                    $("#sendEmailBtn").hide();
                     $("#actionUrl").html('');
                     break;
                 case 'presentation_verified':
@@ -338,6 +386,30 @@
             $("#errorMessageContainer").show();
             $("#errorMessage").text('Error checking status: ' + xhr.responseText);
             clearInterval(statusCheckInterval);
+        }
+
+        function sendEmail() {
+            // Get the email address from the input field
+            const emailAddress = $("#emailAddress").val();
+
+            // Validate email address
+            if (!emailAddress) {
+                return;
+            }
+
+            // Get the verification URL from the page
+            const verificationUrl = $("#actionUrl").text().trim();
+
+            // Prepare email content
+            const subject = encodeURIComponent("Helpdesk verification request");
+            const body = encodeURIComponent(`Here is your verification link:\n\n${verificationUrl}`);
+
+            // Create mailto link and trigger it
+            const mailtoLink = `mailto:${emailAddress}?subject=${subject}&body=${body}`;
+            window.location.href = mailtoLink;
+
+            // Close the modal
+            emailModal.hide();
         }
     </script>
 </body>
