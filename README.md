@@ -1,7 +1,7 @@
 
 # Helpdesk ID prove request
 
-Follow the steps in this article to deploy the Helpdesk IF prove solution. For the solution overview, please check the [Helpdesk ID prove request overview](Overview.md) document.
+Follow the steps in this article to deploy the Helpdesk ID prove solution. For the solution overview, please check the [Helpdesk ID prove request overview](Overview.md) document.
 
 ## 1. Prepare your environment
 
