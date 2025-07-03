@@ -1,17 +1,19 @@
 
 # Helpdesk ID prove request
 
-Follow the steps in this article to deploy the Helpdesk ID prove solution. For the solution overview, please check the [Helpdesk ID prove request overview](Overview.md) document.
+Follow the steps in this article to deploy the Helpdesk ID prove solution. For the solution overview, please check the [overview](Overview.md) document.
 
 ## 1. Prepare your environment
 
-Start by setting up your verified ID service using either the [quick](https://learn.microsoft.com/en-us/entra/verified-id/verifiable-credentials-configure-tenant-quick) or [advanced](https://learn.microsoft.com/en-us/entra/verified-id/verifiable-credentials-configure-tenant) setup. 
+Start by setting up your Microsoft Entra verified ID service using either the [quick](https://learn.microsoft.com/en-us/entra/verified-id/verifiable-credentials-configure-tenant-quick) or [advanced](https://learn.microsoft.com/en-us/entra/verified-id/verifiable-credentials-configure-tenant) setup. 
 
 ## 2. Get the authority of your verified ID service
- 
+
+1. Navigate to <https://entra.microsoft.com> and sign-in with your admin account. 
 1. From the menu, under **verified ID**, select **credentials**.
 1. Select one of the credentials, like the **Verified employee**.
-1. From the **request body** JSON, copy the value of the **authority** ID. It's your Decentralized Identifier.
+1. From the menu, select **Issue a credential**.
+1. In the **request body** JSON, copy the value of the **authority** ID. It's your Decentralized Identifier.
 
     ![Screenshot of the authority ID](https://learn.microsoft.com/en-us/entra/verified-id/media/verifiable-credentials-configure-issuer/issue-credential-custom-view.png)
     
@@ -49,6 +51,11 @@ Start by setting up your verified ID service using either the [quick](https://le
     ```http
     https://graph.microsoft.com/v1.0/servicePrincipals(appId='3db474b9-6a0c-4840-96ac-1fceb342124f')?$select=id,appRoles
     ```
+
+      1. From the **response** JSON, copy the value of the `id`. This ID uniquely identifies a local representation of the `Verifiable Credentials Service Request` application within your tenant. In the next step, it will be referred to as **{resourceId}**.
+
+    1. Locate the **application role** with the value `VerifiableCredential.Create.PresentRequest` and record its ID.  In the next step, it will be referred to as **{appRoleId}**.
+
 1. Finally, grant the Logic App managed Identity permission to the **Verifiable Credentials Service Request** service.
     1. Set the HTTP method to **POST**.
     1. Set the URL query to the following and replace the **{principalId}** with the Azure Logic App Managed Identity service principal.
@@ -68,9 +75,9 @@ Start by setting up your verified ID service using either the [quick](https://le
     ```
 
     Replace:
-    - {principalId} with the Azure Logic App Managed Identity service principal. It should be the one that appears in the URL.
-    - {resourceId} is the **id** from the previous query.
-    - {appRoleId} - In the previous query, locate the app role which its value `VerifiableCredential.Create.PresentRequest` and copy the ID.
+    - **{principalId}** with the Azure Logic App managed identity service principal. It should be the one that appears in the URL.
+    - **{resourceId}** with the ID from the previous query.
+    - **{appRoleId}** with the application role ID from the previous query.
 
     The screenshot below demonstrates the process for constructing the request body.
 
@@ -106,9 +113,9 @@ In this step, add the required “parameters” for the workflows in the logic a
 1. Copy the content of the [parameters.josn](./Azure-Logic-app/parameters.json) file and add it to the editor.
 1. Edit the following:
     1. **DidAuthority** the authority that uniquely identifies your verified id environment.
-    1. **AcceptedIssuers** - In this collection, you specify the DID authorities of organizations you trust. In most cases, this should be your verified ID DID authority (the same value as the DidAuthority). However, there are scenarios where you may also want to accept verified ID credentials issued by other organizations. In this case, add more DID authorities as needed..
+    1. **AcceptedIssuers** - In this collection, you specify the DID authorities of organizations you trust. In most cases, this should be your verified ID DID authority (the same value as the DidAuthority). However, there are scenarios where you may also want to accept verified ID credentials issued by other organizations. In this case, add more DID authorities as needed.
     1. **CallbackUrl** the callback URL which is the endpoint that Microsoft Entra Verified ID uses to notify your application about the request progress. You will update it later.
-    1. **ApiKey** is the “API key” for securing callback notifications sent by Microsoft Entra verified ID to your application. You can generate a value like a secret.
+    1. **ApiKey** is the “API key” for securing callback notifications sent by Microsoft Entra verified ID to your application. You can generate a secret with free tools like <https://jwtsecrets.com/#generator>.
     1. **StorageAccountName** with the storage account associated with your Azure Logic App.
 
 ## 7. Create the presentation workflow
@@ -118,7 +125,7 @@ With all components in place, except the mail service, proceed with building the
 1. On the logic app menu, select **workflows**.
     1. Then select **add** and choose the **add** option.
     1. Enter a name for your workflow, like **Presentation**.
-    1. You can choose either **Stateful** or **stateless**. For non-production environment, choose the **Stateful* option. It can help solve technical issues.
+    1. You can choose either **Stateful** or **stateless**. For non-production environment, choose the **Stateful** option. It can help solve technical issues.
     1. Then select **create**.
     1. The new workflow will appear on the list, select it.
 
@@ -126,7 +133,7 @@ With all components in place, except the mail service, proceed with building the
     1. On the “designer surface”, select **add trigger**.
     1. Find the **Request** trigger and then select the **When a HTTP request is received**.
     1. Change the name of the action to `api`.The name of the “request trigger” determines the URL of your web API endpoint. The URL of the web API will be generated after you save the changes. 
-    1. The custom authentication extension makes an HTTP POST request to your workflow. So, select the **POST** method. 
+    1. The app makes an HTTP POST request to your workflow. So, select the **POST** method. 
     1. For the **Request Body JSON Schema**, add the following:
     
     ```json
@@ -202,8 +209,8 @@ With all components in place, except the mail service, proceed with building the
 
     1. Under **advanced parameters** select **authentication**.
     1. For **authentication type**, select **Managed Identity**.
-    1. In the **Managed identity**, select **System-assinged mangaged idenity**
-    1. For the audiance enter: `3db474b9-6a0c-4840-96ac-1fceb342124f/.default`
+    1. In the **Managed identity**, select **System-assigned managed identity**
+    1. For the audience enter: `3db474b9-6a0c-4840-96ac-1fceb342124f/.default`
 
 1. Next, parse the response from the Microsoft Entra verified ID request endpoint.
     1. Add an action type of **Parse JSON**.
@@ -268,7 +275,7 @@ The next workflow is the “callback endpoint”. Microsoft Entra verified ID in
 1. On the logic app menu, select **workflows**.
 1. Then select **add** and choose the **add** option.
 1. Enter a name for your workflow, like **callback**.
-1. You can choose either **Stateful** or **stateless**. For non-production environment, choose the **Stateful* option. It can help solve technical issues.
+1. You can choose either **Stateful** or **stateless**. For non-production environment, choose the **Stateful** option. It can help solve technical issues.
 1. Then select **create**.
 1. The new workflow will appear on the list, select it.
 1. Edit the workflow. Switch to the **Code view** and paste the content of the [Callback.json](./Azure-Logic-app/Workflows/Callback.json) and save the changes.
@@ -280,10 +287,10 @@ The final workflow checks the state session status, reads the state cache, and r
 1. On the logic app menu, select **Status**.
 1. Then select **add** and choose the **add** option.
 1. Enter a name for your workflow, like **Status**.
-1. You can choose either **Stateful** or **stateless**. For non-production environment, choose the **Stateful* option. It can help solve technical issues.
+1. You can choose either **Stateful** or **stateless**. For non-production environment, choose the **Stateful** option. It can help solve technical issues.
 1. Then select **create**.
-1. The new workflow will appear on the list, select it, select it.
-1. 1. Edit the workflow. Switch to the **Code view** and paste the content of the [Status.json](./Azure-Logic-app/Workflows/Status.json) and save the changes.
+1. The new workflow will appear on the list, select it.
+1. Edit the workflow. Switch to the **Code view** and paste the content of the [Status.json](./Azure-Logic-app/Workflows/Status.json) and save the changes.
 
 ## 10. Create an API Management service
 
@@ -300,7 +307,7 @@ The APIM simplifies the complex URL of Logic Apps, making it consumable by Entra
 1. The name of your organization. .
 1. The **Administrator email** address to which all system notifications from API Management will be sent.
 1. Select a **Pricing tier** with the features you need. The **Basic v2** tier is an economical choice for development and testing scenarios. You can also choose the **Developer tier**.
-1. Select **Review & create**, then select **Create**. It can take aobut 30-60 minutes.
+1. Select **Review & create**, then select **Create**. It can take about 30-60 minutes.
 1. After the APIM deployment has been successfully completed, proceed to select it.
 
 ### 10.1 Create an HTTP API 
