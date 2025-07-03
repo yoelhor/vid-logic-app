@@ -5,154 +5,21 @@
             "Response": {
                 "type": "Response",
                 "kind": "Http",
-                "inputs": {
-                    "statusCode": 200
-                },
                 "runAfter": {
                     "Update_the_state_table": [
                         "SUCCEEDED"
                     ]
                 }
             },
-            "Update_the_state_table": {
-                "type": "ApiConnection",
-                "inputs": {
-                    "host": {
-                        "connection": {
-                            "referenceName": "azuretables"
-                        }
-                    },
-                    "method": "patch",
-                    "body": {
-                        "status": "@{triggerBody()?['requestStatus']}",
-                        "message": "@variables('Message')"
-                    },
-                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent(parameters('StorageAccountName')))}/tables/@{encodeURIComponent('VerifiedIdState')}/entities(PartitionKey='@{encodeURIComponent('key')}',RowKey='@{encodeURIComponent(triggerBody()?['state'])}')"
-                },
-                "runAfter": {
-                    "Switch": [
-                        "SUCCEEDED"
-                    ]
-                }
-            },
-            "Initialize_variable": {
-                "type": "InitializeVariable",
-                "inputs": {
-                    "variables": [
-                        {
-                            "name": "Message",
-                            "type": "string"
-                        }
-                    ]
-                },
-                "runAfter": {
-                    "Condition": [
-                        "SUCCEEDED"
-                    ]
-                }
-            },
-            "Switch": {
-                "type": "Switch",
-                "expression": "@triggerBody()?['requestStatus']",
-                "default": {
-                    "actions": {
-                        "Set_unknown": {
-                            "type": "SetVariable",
-                            "inputs": {
-                                "name": "Message",
-                                "value": "Unknown status: @{triggerBody()?['requestStatus']}"
-                            }
-                        }
-                    }
-                },
-                "cases": {
-                    "request_created": {
-                        "actions": {
-                            "Set_request_created": {
-                                "type": "SetVariable",
-                                "inputs": {
-                                    "name": "Message",
-                                    "value": "Waiting for the user to open the notification."
-                                }
-                            }
-                        },
-                        "case": "request_created"
-                    },
-                    "request_retrieved": {
-                        "actions": {
-                            "Set_request_retrieved": {
-                                "type": "SetVariable",
-                                "inputs": {
-                                    "name": "Message",
-                                    "value": "The user has opened the notification. Awaiting completion of their verification."
-                                }
-                            }
-                        },
-                        "case": "request_retrieved"
-                    },
-                    "presentation_error": {
-                        "actions": {
-                            "Set_presentation_error": {
-                                "type": "SetVariable",
-                                "inputs": {
-                                    "name": "Message",
-                                    "value": "Presentation failed: "
-                                }
-                            }
-                        },
-                        "case": "presentation_error"
-                    },
-                    "presentation_verified": {
-                        "actions": {
-                            "Set_presentation_verified": {
-                                "type": "SetVariable",
-                                "inputs": {
-                                    "name": "Message",
-                                    "value": "The user has successfully completed their verification process."
-                                }
-                            }
-                        },
-                        "case": "presentation_verified"
-                    }
-                },
-                "runAfter": {
-                    "Initialize_variable": [
-                        "SUCCEEDED"
-                    ]
-                }
-            },
             "Condition": {
                 "type": "If",
-                "expression": {
-                    "and": [
-                        {
-                            "not": {
-                                "equals": [
-                                    "@triggerOutputs()?['headers']['api-key']",
-                                    "@parameters('ApiKey')"
-                                ]
-                            }
-                        }
-                    ]
-                },
                 "actions": {
                     "Invalid_api-key_response": {
                         "type": "Response",
-                        "kind": "Http",
-                        "inputs": {
-                            "statusCode": 401,
-                            "body": "Invalid API key"
-                        }
+                        "kind": "Http"
                     },
                     "Terminate": {
                         "type": "Terminate",
-                        "inputs": {
-                            "runStatus": "Failed",
-                            "runError": {
-                                "code": "401",
-                                "message": "Invalid api-key"
-                            }
-                        },
                         "runAfter": {
                             "Invalid_api-key_response": [
                                 "SUCCEEDED"
@@ -164,6 +31,30 @@
                     "actions": {}
                 },
                 "runAfter": {}
+            },
+            "Initialize_variables": {
+                "type": "InitializeVariable",
+                "runAfter": {
+                    "Condition": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "If_presentation_verified": {
+                "type": "If",
+                "actions": {
+                    "Set_variable": {
+                        "type": "SetVariable"
+                    }
+                },
+                "else": {
+                    "actions": {}
+                },
+                "runAfter": {
+                    "Initialize_variables": [
+                        "SUCCEEDED"
+                    ]
+                }
             }
         },
         "contentVersion": "1.0.0.0",
@@ -171,92 +62,7 @@
         "triggers": {
             "api": {
                 "type": "Request",
-                "kind": "Http",
-                "inputs": {
-                    "method": "POST",
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "requestId": {
-                                "type": "string"
-                            },
-                            "requestStatus": {
-                                "type": "string"
-                            },
-                            "state": {
-                                "type": "string"
-                            },
-                            "verifiedCredentialsData": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "issuer": {
-                                            "type": "string"
-                                        },
-                                        "type": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "claims": {
-                                            "type": "object",
-                                            "properties": {
-                                                "displayName": {
-                                                    "type": "string"
-                                                },
-                                                "preferredLanguage": {
-                                                    "type": "string"
-                                                },
-                                                "revocationId": {
-                                                    "type": "string"
-                                                },
-                                                "photo": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        },
-                                        "credentialState": {
-                                            "type": "object",
-                                            "properties": {
-                                                "revocationStatus": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        },
-                                        "domainValidation": {
-                                            "type": "object",
-                                            "properties": {
-                                                "url": {
-                                                    "type": "string"
-                                                }
-                                            }
-                                        },
-                                        "expirationDate": {
-                                            "type": "string"
-                                        },
-                                        "issuanceDate": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "issuer",
-                                        "type",
-                                        "claims",
-                                        "credentialState",
-                                        "domainValidation",
-                                        "expirationDate",
-                                        "issuanceDate"
-                                    ]
-                                }
-                            },
-                            "subject": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
+                "kind": "Http"
             }
         }
     },

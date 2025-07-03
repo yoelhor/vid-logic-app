@@ -115,6 +115,46 @@
         .github-link:hover {
             color: #000000;
         }
+
+        .notification-container {
+            background-color: #eceff1;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-color: #198754;
+            border-style: solid;
+            border-width: 2px;
+        }
+
+        .progress-circle {
+            width: 50px;
+            min-width: 50px;
+            height: 50px;
+            min-height: 50px;
+            border-radius: 50%;
+            background: conic-gradient(#198754 0deg, #e9ecef 0deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+        }
+
+        .progress-circle-inner {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .form-control:disabled {
+            background-color: rgb(247, 247, 247);
+            opacity: 1;
+        }
     </style>
 </head>
 
@@ -161,7 +201,7 @@
                 </div>
             </div>
 
-            <div class="row mt-4">
+            <div class="row mt-4"  id="sendButtonContainer">
                 <div class="col-12">
                     <button type="button" id="sendButton" class="btn btn-primary">
                         <i class="bi bi-send"></i> Submit Verification
@@ -181,28 +221,25 @@
             </div>
         </div>
 
-        <div id="progressSection" class="mt-4" style="display: none;">
-            <h6 class="text-muted mb-2">Verification Progress</h6>
-            <div class="progress" style="height: 20px;">
-                <div id="verificationProgress" class="progress-bar progress-bar-striped progress-bar-animated"
-                    role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">0%
+        <!-- Issuance Notification Area -->
+        <div id="progressSection" class="mt-4 notification-container" style="display: none;">
+            <div class="d-flex align-items-center">
+                <div class="progress-circle" id="progressCircle">
+                    <div class="progress-circle-inner">0%</div>
                 </div>
+                <div id="progressMessage"></div>
             </div>
         </div>
+
 
         <div id="errorMessageContainer" class="alert alert-danger text-start mt-4" style="display: none;" role="alert">
             <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Error</h5>
             <p id="errorMessage" class="mb-0"></p>
         </div>
 
-        <!-- <div id="successMessageContainer" class="alert alert-success text-start mt-4" style="display: none;"
-            role="alert"> -->
-        <p id="successMessage" class="mb-0"></p>
-        <!-- </div> -->
-
         <!-- Add Modal for Email Form -->
         <div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="emailModalLabel">Send Verification Link</h5>
@@ -227,7 +264,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="text-muted">
-                    <small>© 2025 Woodgrove IT Helpdesk (v1.0.1).</small>
+                    <small>© 2025 Woodgrove IT Helpdesk (v1.0.2).</small>
                     <a href="https://github.com/yoelhor/vid-logic-app" target="_blank" class="github-link ms-2">
                         <i class="bi bi-github"></i> Source code
                     </a>
@@ -249,7 +286,26 @@
 
     <script>
         let statusCheckInterval;
-        let baseApiUrl = "https://woodgroove.azure-api.net/vid"
+
+        // Web API endpoints 
+        const ENDPOINTS = {
+            PRESENTATION: 'https://woodgroove.azure-api.net/vid/presentation',
+            STATUS: 'https://woodgroove.azure-api.net/vid/status'
+        };
+
+        const MESSAGES = {
+            PROCESSING: 'Processing your request, please wait...',
+            EMAIL_SENT: 'Verification email sent successfully.',
+            REQUEST_CREATED: 'Waiting for the user to open the notification.',
+            REQUEST_RETRIEVED: 'The user has opened the notification and is currently pending completion of their verification process.',
+            REQUEST_VERIFIED: 'The verification process has been completed successfully by the user.',
+            ERROR_GENERIC: 'An error occurred. Please try again.',
+            ERROR_UPN_REQUIRED: 'Please fill in the User Principal Name (UPN) field.',
+            ERROR_PHONE_REQUIRED: 'Please fill in the phone number field.',
+            EMAIL_SUBJECT: 'Helpdesk verification request',
+            EMAIL_BODY_PREFIX: 'Here is your verification link:'
+        };
+
         let emailModal;
         let currentActionUrl = '';
 
@@ -270,23 +326,56 @@
                 sendEmail();
             });
 
+            // Handle Enter key press in email modal
+            $("#emailAddress").keypress(function(event) {
+                if (event.which === 13) { // Enter key
+                    event.preventDefault();
+                    sendEmail();
+                }
+            });
+
+            // Handle email modal form submission
+            $("#emailModal").on('submit', function(e) {
+                e.preventDefault();
+                sendEmail();
+            });
+
             $("#sendButton").click(function () {
 
+                // Check if the UPN and phone fields are filled
+                if (!$("#upn").val()) {
+                    $("#errorMessageContainer").show();
+                    $("#errorMessage").text(MESSAGES.ERROR_UPN_REQUIRED);
+                    return;
+                }
+
+                // if (!$("#phone").val()) {
+                //     $("#errorMessageContainer").show();
+                //     $("#errorMessage").text(MESSAGES.ERROR_PHONE_REQUIRED);
+                //     return;
+                // }
+
                 // Disable button while processing
-                $("#sendButton").prop('disabled', true);
+                $("#sendButtonContainer").hide();
                 $("#errorMessageContainer").hide();
                 $("#errorMessage").text('');
-                $("#successMessageContainer").show();
 
                 // Reset progress bar
                 $("#progressSection").show();
-                $("#verificationProgress").addClass('progress-bar-animated').addClass('progress-bar-striped')
-                $("#verificationProgress").css('width', '5%').attr('aria-valuenow', 5).text('5%');
-                $("#successMessage").text("Processing your request...");
+                $("#progressMessage").text('');
+                $("#verificationProgress").addClass('progress-bar-animated').addClass('progress-bar-striped');
+
+                // Disable all input fields
+                $("#upn").prop('disabled', true);
+                $("#phone").prop('disabled', true);
+                $("#faceCheck").prop('disabled', true);
+
+                // Update progress bar to indicate processing
+                updateProgress(5, MESSAGES.PROCESSING);
 
                 // Call the web API to start the presentation process
                 $.ajax({
-                    url: baseApiUrl + '/presentation',
+                    url: ENDPOINTS.PRESENTATION,
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({
@@ -304,13 +393,28 @@
                     error: handleError
                 });
             });
+
+            // Handle Enter key press on input fields
+            $("input").keypress(function(event) {
+                if (event.which === 13) { // Enter key
+                    event.preventDefault();
+                    $("#sendButton").click();
+                }
+            });
+
+            // Handle form submission
+            $(document).on('submit', function(e) {
+                e.preventDefault();
+                $("#sendButton").click();
+            });
         });
+
 
         // Set interval to check the status of the request
         function startStatusCheck() {
             statusCheckInterval = setInterval(function () {
                 $.ajax({
-                    url: baseApiUrl + '/status',
+                    url: ENDPOINTS.STATUS,
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({
@@ -344,41 +448,76 @@
 
             // Update progress based on status
             let progress = 0;
+            let statusMessage = '';
             switch (response.status) {
                 case 'email_sent':
                     progress = 15;
+                    statusMessage = MESSAGES.EMAIL_SENT;
                     $("#sendEmailBtn").show();
                     break;
                 case 'request_created':
                     progress = 35;
+                    statusMessage = MESSAGES.REQUEST_CREATED;
                     break;
                 case 'request_retrieved':
                     progress = 60;
+                    statusMessage = MESSAGES.REQUEST_RETRIEVED;
                     $("#sendEmailBtn").hide();
                     $("#actionUrl").html('');
                     break;
                 case 'presentation_verified':
                     progress = 100;
+                    statusMessage = MESSAGES.REQUEST_VERIFIED;
                     $("#actionUrl").html('');
+
+                    // The verification is complete, stop the status check
+                    clearInterval(statusCheckInterval);
+
+                    // Change progress bar style for completion
+                    $("#verificationProgress")
+                        .removeClass('progress-bar-animated')
+                        .removeClass('progress-bar-striped');
+
+                    resetForm();
                     break;
             }
 
-            // Update progress bar
-            $("#verificationProgress").css('width', progress + '%').attr('aria-valuenow', progress).text(progress + '%');
+            // Update progress bar and status message
+            updateProgress(progress, statusMessage);
+        }
 
-            // Handle success response
-            $("#successMessage").text(response.message);
+        function resetForm() {
+            // Hide error message
+            $("#errorMessageContainer").hide();
+            $("#errorMessage").text('');
 
-            // If we have a final status, stop checking
-            if (response.status === "presentation_verified") {
-                clearInterval(statusCheckInterval);
-                $("#sendButton").prop('disabled', false);
+            // Show the send button
+            $("#sendButtonContainer").show();
 
-                // Change progress bar style for completion
-                $("#verificationProgress")
-                    .removeClass('progress-bar-animated')
-                    .removeClass('progress-bar-striped')
-            }
+            // Enable input fields
+            $("#upn").prop('disabled', false);
+            $("#phone").prop('disabled', false);
+            $("#faceCheck").prop('disabled', false);
+        }
+
+        // Update progress bar and status message
+        function updateProgress(progress, message) {
+            //$("#verificationProgress").css('width', progress + '%').attr('aria-valuenow', progress).text(progress + '%');
+
+
+            const progressElement = $("#progressCircle");
+            const innerElement = progressElement.find('.progress-circle-inner');
+
+            // Update text
+            innerElement.text(Math.round(progress) + '%');
+
+            // Update circle progress
+            const degrees = (progress / 100) * 360;
+            progressElement.css('background',
+                `conic-gradient(#198754 ${degrees}deg, #ced4db ${degrees}deg)`
+            );
+
+            $("#progressMessage").text(message);
         }
 
         // Handle web API error response
@@ -401,8 +540,8 @@
             const verificationUrl = $("#actionUrl").text().trim();
 
             // Prepare email content
-            const subject = encodeURIComponent("Helpdesk verification request");
-            const body = encodeURIComponent(`Here is your verification link:\n\n${verificationUrl}`);
+            const subject = encodeURIComponent(MESSAGES.EMAIL_SUBJECT);
+            const body = encodeURIComponent(`${MESSAGES.EMAIL_BODY_PREFIX}\n\n${verificationUrl}`);
 
             // Create mailto link and trigger it
             const mailtoLink = `mailto:${emailAddress}?subject=${subject}&body=${body}`;
