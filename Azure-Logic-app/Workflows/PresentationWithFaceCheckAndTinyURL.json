@@ -1,0 +1,92 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Parse_verified_ID_JSON_response": {
+                "type": "ParseJson",
+                "runAfter": {
+                    "Call_Entra_verified_ID": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Response": {
+                "type": "Response",
+                "kind": "Http",
+                "runAfter": {
+                    "Update_state_table": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Condition": {
+                "type": "If",
+                "actions": {
+                    "Set_JSON_payload_variable_with_face-check": {
+                        "type": "SetVariable",
+                        "runAfter": {
+                            "Compose_request_payload_with_face-check": [
+                                "SUCCEEDED"
+                            ]
+                        }
+                    }
+                },
+                "else": {
+                    "actions": {
+                        "Set_JSON_payload_variable": {
+                            "type": "SetVariable",
+                            "runAfter": {
+                                "Compose_request_payload": [
+                                    "SUCCEEDED"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Initialize_JSON_payload_variable": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Call_Entra_verified_ID": {
+                "type": "Http",
+                "runAfter": {
+                    "Condition": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Initialize_JSON_payload_variable": {
+                "type": "InitializeVariable",
+                "runAfter": {}
+            },
+            "HTTP_get_tiny_URL": {
+                "type": "Http",
+                "runAfter": {
+                    "Parse_verified_ID_JSON_response": [
+                        "SUCCEEDED"
+                    ]
+                }
+            },
+            "Parse_tiny_URL_JSON": {
+                "type": "ParseJson",
+                "runAfter": {
+                    "HTTP_get_tiny_URL": [
+                        "SUCCEEDED"
+                    ]
+                }
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "triggers": {
+            "api": {
+                "type": "Request",
+                "kind": "Http",
+                "operationOptions": "EnableSchemaValidation"
+            }
+        }
+    },
+    "kind": "Stateful"
+}
