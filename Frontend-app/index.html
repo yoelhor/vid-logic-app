@@ -201,7 +201,7 @@
                 </div>
             </div>
 
-            <div class="row mt-4"  id="sendButtonContainer">
+            <div class="row mt-4" id="sendButtonContainer">
                 <div class="col-12">
                     <button type="button" id="sendButton" class="btn btn-primary">
                         <i class="bi bi-send"></i> Submit Verification
@@ -209,14 +209,29 @@
                 </div>
             </div>
 
-            <div class="row mt-4">
-                <div class="col-12">
+            <div class="row mt-4" id="actionSection" style="display: none;">
+
+                <div class="col text-muted">
                     <div id="actionUrl" class="text-muted mt-4 small" style="display: none;"> </div>
+                    
+                    Share via:
                     <!-- Add button to trigger modal -->
-                    <button type="button" id="sendEmailBtn" style="display: none;"
+                    <button type="button" id="shareViaEmail" style="display: none;"
                         class="btn btn-link link-secondary link-underline-light">
-                        <i class="bi bi-envelope"></i> Share via email
+                        <i class="bi bi-envelope"></i> Email
                     </button>
+
+                    <button type="button" id="shareViaWhatsApp" style="display: none;"
+                        class="btn btn-link link-secondary link-underline-light">
+                        <i class="bi bi-whatsapp"></i> WhatsApp
+                    </button>
+
+                    <button type="button" id="shareViaCopy" style="display: none;"
+                        class="btn btn-link link-secondary link-underline-light">
+                        <i class="bi bi-clipboard"></i> Copy Link
+                    </button>
+
+                    <div id="actionTinyUrl" class="text-muted mt-4 small" style="display: none;"> </div>
                 </div>
             </div>
         </div>
@@ -317,7 +332,7 @@
             emailModal = new bootstrap.Modal(document.getElementById('emailModal'));
 
             // Show email button when URL is available
-            $("#sendEmailBtn").click(function () {
+            $("#shareViaEmail").click(function () {
                 emailModal.show();
             });
 
@@ -326,8 +341,18 @@
                 sendEmail();
             });
 
+            // Handle WhatsApp sending
+            $("#shareViaWhatsApp").click(function () {
+                sendWhatsApp();
+            });
+
+            // Handle copy link
+            $("#shareViaCopy").click(function () {
+                copyToClipboard();
+            });
+
             // Handle Enter key press in email modal
-            $("#emailAddress").keypress(function(event) {
+            $("#emailAddress").keypress(function (event) {
                 if (event.which === 13) { // Enter key
                     event.preventDefault();
                     sendEmail();
@@ -335,7 +360,7 @@
             });
 
             // Handle email modal form submission
-            $("#emailModal").on('submit', function(e) {
+            $("#emailModal").on('submit', function (e) {
                 e.preventDefault();
                 sendEmail();
             });
@@ -395,7 +420,7 @@
             });
 
             // Handle Enter key press on input fields
-            $("input").keypress(function(event) {
+            $("input").keypress(function (event) {
                 if (event.which === 13) { // Enter key
                     event.preventDefault();
                     $("#sendButton").click();
@@ -403,7 +428,7 @@
             });
 
             // Handle form submission
-            $(document).on('submit', function(e) {
+            $(document).on('submit', function (e) {
                 e.preventDefault();
                 $("#sendButton").click();
             });
@@ -446,6 +471,13 @@
                 $("#actionUrl").html('');
             }
 
+            // Check if the response contains a valid tiny URL and update the UI
+            if (response.tinyUrl) {
+                $("#actionTinyUrl").html(response.tinyUrl)
+            } else {
+                $("#actionTinyUrl").html('');
+            }
+
             // Update progress based on status
             let progress = 0;
             let statusMessage = '';
@@ -453,7 +485,10 @@
                 case 'email_sent':
                     progress = 15;
                     statusMessage = MESSAGES.EMAIL_SENT;
-                    $("#sendEmailBtn").show();
+                    $("#actionSection").show();
+                    $("#shareViaEmail").show();
+                    $("#shareViaWhatsApp").show();
+                    $("#shareViaCopy").show();
                     break;
                 case 'request_created':
                     progress = 35;
@@ -462,7 +497,7 @@
                 case 'request_retrieved':
                     progress = 60;
                     statusMessage = MESSAGES.REQUEST_RETRIEVED;
-                    $("#sendEmailBtn").hide();
+                    $("#actionSection").hide();
                     $("#actionUrl").html('');
                     break;
                 case 'presentation_verified':
@@ -549,6 +584,93 @@
 
             // Close the modal
             emailModal.hide();
+        }
+
+        function sendWhatsApp() {
+            // Get the phone number from the input field
+            const phoneNumber = $("#phone").val();
+
+            // Get the verification URL from the page
+            const verificationUrl = $("#actionTinyUrl").html().trim();
+
+            // Validate phone number and URL
+            if (!phoneNumber) {
+                // Show error message if phone number or URL is empty
+                $("#errorMessageContainer").show();
+                $("#errorMessage").text(MESSAGES.ERROR_PHONE_REQUIRED);
+                return;
+            }
+
+            // Clean phone number (remove spaces, dashes, parentheses)
+            const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+            
+            // Prepare WhatsApp message
+            const message = encodeURIComponent(`Pls click on the following link to prove your identity: ${verificationUrl}`);
+
+            // Create WhatsApp link and open it
+            const whatsappLink = `https://wa.me/${cleanPhone}?text=${message}`;
+            window.open(whatsappLink, '_blank');
+        }
+
+        function copyToClipboard() {
+            // Get the verification URL from the page
+            const verificationUrl = $("#actionUrl").text().trim();
+
+            // Validate URL
+            if (!verificationUrl) {
+                return;
+            }
+
+            // Copy to clipboard using the modern Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(verificationUrl).then(function() {
+                    // Show success feedback
+                    showCopyFeedback();
+                }).catch(function(err) {
+                    console.error('Failed to copy: ', err);
+                    // Fallback to older method
+                    fallbackCopyToClipboard(verificationUrl);
+                });
+            } else {
+                // Fallback for older browsers or non-secure contexts
+                fallbackCopyToClipboard(verificationUrl);
+            }
+        }
+
+        function fallbackCopyToClipboard(text) {
+            // Create a temporary textarea element
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+                showCopyFeedback();
+            } catch (err) {
+                console.error('Fallback: Failed to copy', err);
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function showCopyFeedback() {
+            // Change the copy button icon and text temporarily to show success
+            const copyButton = $("#shareViaCopy");
+            const originalHtml = copyButton.html();
+            
+            copyButton.html('<i class="bi bi-check-circle-fill text-success"></i> Copied!');
+            copyButton.prop('disabled', true);
+            
+            // Reset after 2 seconds
+            setTimeout(function() {
+                copyButton.html(originalHtml);
+                copyButton.prop('disabled', false);
+            }, 2000);
         }
     </script>
 </body>
