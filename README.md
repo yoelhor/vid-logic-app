@@ -391,3 +391,7 @@ An APIM subscription lets developers or applications access APIs through Azure A
 1. For the **Exposed headers**, enter `*`.
     
     ![Screenshot that shows how to add an allowed origin](./help/apim-cors-3.png)
+
+## Using tiny URL
+
+Some applications, such as WhatsApp, do not display the verified ID schema link `openid-vc://` as clickable. Using a tiny URL service can address this issue by making the link clickable, increasing its reliability (especially when using a custom domain), and improving appearance of the link.
