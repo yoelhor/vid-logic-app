@@ -1,6 +1,12 @@
 
 # Helpdesk ID prove request
 
+The **helpdesk solution** is designed to significantly enhance security and efficiency in helpdesk operations, particularly for high-risk requests like password resets, and account recovery. The core of the solution lies in leveraging verified employee credential. 
+
+When an employee contacts the helpdesk for assistance, the agent triggers a secure presentation flow. The employee receives a short, one-time URL that directs them to the original Entra Verified ID presentation request. 
+
+This presentation request is bounded to the employee’s unique **User Principal Name** (UPN), ensuring that only the rightful employee can successfully complete the process by presenting their Verified Employee ID containing the matching UPN claim. This definitive digital proof eliminates fraud risk (with face-check), streamlines agent workflows, and allows the helpdesk to confidently and quickly address the employee's need.
+
 Follow the steps in this article to deploy the Helpdesk ID prove solution. For the solution overview, please check the [overview](Overview.md) document.
 
 ## 1. Prepare your environment
@@ -210,7 +216,7 @@ With all components in place, except the mail service, proceed with building the
     1. Under **advanced parameters** select **authentication**.
     1. For **authentication type**, select **Managed Identity**.
     1. In the **Managed identity**, select **System-assigned managed identity**
-    1. For the audience enter: `3db474b9-6a0c-4840-96ac-1fceb342124f/.default`
+    1. For the audience enter: `3db474b9-6a0c-4840-96ac-1fceb342124f`
 
 1. Next, parse the response from the Microsoft Entra verified ID request endpoint.
     1. Add an action type of **Parse JSON**.
@@ -268,6 +274,9 @@ With all components in place, except the mail service, proceed with building the
     1. Make sure the status is `200`.
     1. For the Body, enter: `@{outputs('Compose_state_JSON')}`. It's the JSON document you composed in the previous steps.
 
+> [!IMPORTANT]
+> The email notification sent to the user must include a short, clean, and user-friendly URL that facilitates a seamless redirect. The full redirect URL must follow this specific format: {redirect-endpiont}?upn{user's upn}. For example `https://api.contoso.com/redirect?upn=someone@contoso.com`
+
 ## 8. Add the Callback workflows
 
 The next workflow is the “callback endpoint”. Microsoft Entra verified ID invokes this endpoint to update the application with the request’s progress. 
@@ -292,7 +301,87 @@ The final workflow checks the state session status, reads the state cache, and r
 1. The new workflow will appear on the list, select it.
 1. Edit the workflow. Switch to the **Code view** and paste the content of the [Status.json](./Azure-Logic-app/Workflows/Status.json) and save the changes.
 
-## 10. Create an API Management service
+## 10. Add redirection workflow (tiny-url)
+
+Some applications, such as WhatsApp, do not display the verified ID schema link `openid-vc://` as clickable. Using a tiny URL service can address this issue by making the link clickable, increasing its reliability (especially when using a custom domain), and improving appearance of the link. Reference to the [redirection workflow](./Azure-Logic-app/Workflows/Tiny-url.json).
+
+1. On the logic app menu, select **Status**.
+1. Then select **add** and choose the **add** option.
+1. Enter a name for your workflow, like **Redirect**.
+1. You can choose either **Stateful** or **stateless**. For non-production environment, choose the **Stateful** option. It can help solve technical issues.
+1. Then select **create**.
+1. The new workflow will appear on the list, select it.
+1. Next, edit the workflow. 
+    1. On the “designer surface”, select **add trigger**.
+    1. Find the **Request** trigger and then select the **When a HTTP request is received**.
+    1. Change the name of the action to `api`.The name of the “request trigger” determines the URL of your web API endpoint. The URL of the web API will be generated after you save the changes. 
+    1. The app makes an HTTP **GET** (important!) request to your workflow. So, select the **GET** method. 
+    1. For the **Request Body JSON Schema**, add the following:
+1. Add an action type of **Get_entity_(V2)**
+    1. Change the **Name** to `Get state entry`.
+    1. Partition **Key**, enter: `key`. Please ensure that the key is entered exactly as provided, paying attention to case sensitivity. It should be in all lowercase letters.
+    1. For the **Raw**, enter: `@{triggerOutputs()['queries']['upn']}`
+    1. For the **Storage account name or table endpoint**: enter: `@{parameters('StorageAccountName')}`
+    1. For the **Table**, select `VerifiedIdState`.
+1. Next, parse the response from the storage account.
+    1. Add an action type of **Parse JSON**.
+    1. Change the **name** to `Parse state entry`.
+    1. For the **Content**, add: `@{body('Get_entity_(V2)')}`
+    1. For the **schema**, enter:
+    
+    ```json
+    {
+        "type": "object",
+        "properties": {
+            "odata.metadata": {
+                "type": "string"
+            },
+            "odata.etag": {
+                "type": "string"
+            },
+            "PartitionKey": {
+                "type": "string"
+            },
+            "RowKey": {
+                "type": "string"
+            },
+            "Timestamp": {
+                "type": "string"
+            },
+            "message": {
+                "type": "string"
+            },
+            "status": {
+                "type": "string"
+            },
+            "url": {
+                "type": "string"
+            }
+        }
+    }
+    ``` 
+1. The final step in the workflow is to return an HTTP response to the caller (your application).
+    1. Add an action, type of **Response**.
+    1. Make sure the status is `200`.
+    1. Under **Headers**, set the **key** to `Content-Type` and the **Value** to `text/html`.
+    1. In the **Body** add the following:
+    
+    ```html
+    <html>
+    <head>
+    <title> Redirect</title>
+    <script>
+      window.onload = function() {
+        window.location.href = "@{body('Parse_JSON')?['url']}";
+       };
+    </script>
+    </head>
+    <body>Hold tight! We're redirecting you now...</body>
+    </html>
+    ```
+    
+
+## 11. Create an API Management service
 
 Azure API Management functions as a gateway for all requests from frontend application and Microsoft Entra. The requests first reach the APIM gateway, which then forwards them to respective backend services (using URL rewrite).
 
@@ -310,7 +399,7 @@ The APIM simplifies the complex URL of Logic Apps, making it consumable by Entra
 1. Select **Review & create**, then select **Create**. It can take about 30-60 minutes.
 1. After the APIM deployment has been successfully completed, proceed to select it.
 
-### 10.1 Create an HTTP API 
+### 11.1 Create an HTTP API 
 
 1. From the menu, select **APIs**, then select **Add API**.
 1. In the **Define a new API** page, select **HTTP**.
@@ -325,7 +414,7 @@ The APIM simplifies the complex URL of Logic Apps, making it consumable by Entra
 
     1. Finally, select **Create**.
 
-### 10.2 Add operations 
+### 11.2 Add operations 
 
 Repeat the steps outlined in this section for each of the three Logic App workflows you have created.
 
@@ -350,8 +439,9 @@ Repeat the steps outlined in this section for each of the three Logic App workfl
     ![Screenshot that demonstrates how to add a rewrite URL policy.](./help/apim-add-policy-2.png)
 
 1. Please repeat the process for the remaining two endpoints.
+1. For the redirection (tiny-URL) make sure the **HTTP Method** is `GET`.
 
-### 10.3 Disable API subscription
+### 11.3 Disable API subscription
 
 An APIM subscription lets developers or applications access APIs through Azure APIM using a subscription key in request headers. For these endpoints, disable the subscription to allow the verified ID service to call the callback endpoint without needing a subscription key.
 
@@ -359,7 +449,7 @@ An APIM subscription lets developers or applications access APIs through Azure A
 1. Scroll down to the **Subscription** section
 1. Uncheck the **Subscription required** and save the changes.
 
-### 10.4 Update the callback URL
+### 11.4 Update the callback URL
 
 
 1. Select the **Callback** operation.
@@ -370,7 +460,7 @@ An APIM subscription lets developers or applications access APIs through Azure A
 1. Go to the Azure Logic app **Parameters**.
 1. Set the value of the **CallbackUrl** URL to 
 
-## Set CORS (for SPA apps)
+## 12. Set CORS (for SPA apps)
 
 [Cross-Origin Resource Sharing (CORS)](https://learn.microsoft.com/en-us/azure/api-management/cors-policy) enables JavaScript code running in a browser on an external host to interact with API, like Azure Logic App endpoints. Specify the origins that are permitted to make cross-origin calls. For instance, a helpdesk single-page application running in the `http://woodgrovedemo.com` domain can access the web API endpoint at `https://woodgroove.azure-api.net`. To allow all origins, use "*" and remove all other specified origins from the list.
 
@@ -391,7 +481,3 @@ An APIM subscription lets developers or applications access APIs through Azure A
 1. For the **Exposed headers**, enter `*`.
     
     ![Screenshot that shows how to add an allowed origin](./help/apim-cors-3.png)
-
-## Using tiny URL
-
-Some applications, such as WhatsApp, do not display the verified ID schema link `openid-vc://` as clickable. Using a tiny URL service can address this issue by making the link clickable, increasing its reliability (especially when using a custom domain), and improving appearance of the link.

@@ -1,0 +1,103 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {
+            "api": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "method": "GET"
+                }
+            }
+        },
+        "actions": {
+            "Get_entity_(V2)": {
+                "type": "ApiConnection",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['azuretables']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/v2/storageAccounts/@{encodeURIComponent(encodeURIComponent(parameters('StorageAccountName')))}/tables/@{encodeURIComponent('VerifiedIdState')}/entities(PartitionKey='@{encodeURIComponent('key')}',RowKey='@{encodeURIComponent(triggerOutputs()['queries']['upn'])}')"
+                },
+                "runAfter": {}
+            },
+            "Parse_JSON": {
+                "type": "ParseJson",
+                "inputs": {
+                    "content": "@body('Get_entity_(V2)')",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "odata.metadata": {
+                                "type": "string"
+                            },
+                            "odata.etag": {
+                                "type": "string"
+                            },
+                            "PartitionKey": {
+                                "type": "string"
+                            },
+                            "RowKey": {
+                                "type": "string"
+                            },
+                            "Timestamp": {
+                                "type": "string"
+                            },
+                            "message": {
+                                "type": "string"
+                            },
+                            "status": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Get_entity_(V2)": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Response": {
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                    "statusCode": 200,
+                    "headers": {
+                        "Content-Type": "text/html"
+                    },
+                    "body": "<html>\n<head>\n<title> Redirect</title>\n<script>\n  window.onload = function() {\n    window.location.href = \"@{body('Parse_JSON')?['url']}\";\n   };\n</script>\n</head>\n<body>Hold tight! We're redirecting you now...</body>\n</html>"
+                },
+                "runAfter": {
+                    "Parse_JSON": [
+                        "Succeeded"
+                    ]
+                }
+            }
+        },
+        "outputs": {},
+        "parameters": {
+            "StorageAccountName": {
+                "defaultValue": "myiddemovid",
+                "type": "String"
+            },
+            "$connections": {
+                "type": "Object",
+                "defaultValue": {}
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "type": "Object",
+            "value": {}
+        }
+    }
+}
