@@ -1,7 +1,7 @@
 
 # Helpdesk ID prove request
 
-The **helpdesk solution** is designed to significantly enhance security and efficiency in helpdesk operations, particularly for high-risk requests like password resets, and account recovery. The core of the solution lies in leveraging verified employee credential. 
+The "Helpdesk ID prove request" is designed to significantly enhance security and efficiency in helpdesk operations, particularly for high-risk requests like password resets, and account recovery. The core of the solution lies in leveraging **Verified employee** credential.
 
 When an employee contacts the helpdesk for assistance, the agent triggers a secure presentation flow. The employee receives a short, one-time URL that directs them to the original Entra Verified ID presentation request. 
 
